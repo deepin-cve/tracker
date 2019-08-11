@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link href="/tracker/style.css" type="text/css" rel="stylesheet"> </link>
+        <script src="/tracker/script.js" type="text/javascript"> </script>
+        <title>Vulnerable source packages in the stable suite</title>
+    </head>
+
+    <body>
+        <header>
+            <h1>Vulnerable source packages in the stable suite</h1>
+        </header>
+        <form method="get">
+            <SPAN id="filters"><input type="hidden" name="filter" value="1"/>
+            <label rel="urgency">
+                <input checked="checked" onChange="this.form.submit()" type="checkbox" name="filter" value="high_urgency">high</input>
+            </label>
+            <label rel="urgency"><input onChange="this.form.submit()" type="checkbox" name="filter" value="medium_urgency">medium</input></label>
+            <label rel="urgency"><input onChange="this.form.submit()" type="checkbox" name="filter" value="low_urgency">low</input></label>
+            <label rel="urgency"><input onChange="this.form.submit()" type="checkbox" name="filter" value="unimportant_urgency">unimportant</input></label>
+            <label rel="urgency"><input onChange="this.form.submit()" type="checkbox" name="filter" value="unassigned_urgency">not yet assigned</input></label>
+            <label rel="urgency"><input onChange="this.form.submit()" type="checkbox" name="filter" value="endoflife_urgency">end-of-life</input></label>
+            <label rel="scope"><input onChange="this.form.submit()" type="checkbox" name="filter" value="remote">hide remote scope</input></label>
+            <label rel="scope"><input onChange="this.form.submit()" type="checkbox" name="filter" value="local">hide local scope</input></label>
+            <label rel="scope"><input onChange="this.form.submit()" type="checkbox" name="filter" value="unclear">hide unclear scope</input></label>
+            <label rel="extra"><input checked="checked" onChange="this.form.submit()" type="checkbox" name="filter" value="undetermined_issues">include issues to be checked (shown in purple)</input></label>
+            <label rel="nodsa"><input onChange="this.form.submit()" type="checkbox" name="filter" value="nodsa">include issues tagged &lt;no-dsa&gt;</input></label>
+            <label rel="nodsa"><input onChange="this.form.submit()" type="checkbox" name="filter" value="noignored">include issues tagged &lt;ignored&gt;</input></label>
+            <label rel="nodsa"><input onChange="this.form.submit()" type="checkbox" name="filter" value="nopostponed">include issues tagged &lt;postponed&gt;</input></label>
+        </SPAN>
+        <NOSCRIPT><input type="submit" value="Apply"/></NOSCRIPT>
+        </form>
+        <br/>
+        <table>
+            <tr>
+                <th>Package</th>
+                <th>Bug</th>
+                <th>Urgency</th>
+                <th>Remote</th>
+            </tr>
+            <tr>
+                <td><a href="/tracker/source-package/docker.io">docker.io</a></td>
+                <td><a href="/tracker/CVE-2019-14271">CVE-2019-14271</a></td>
+                <td><span class="red">high**</span></td>
+                <td>yes</td>
+            </tr>
+            <tr>
+                <td><a href="/tracker/source-package/hdf5">hdf5</a></td>
+                <td><a href="/tracker/CVE-2018-13866">CVE-2018-13866</a></td>
+                <td><span class="red">high**</span></td>
+                <td>yes</td>
+            </tr>
+            <tr>
+                <td><a href="/tracker/source-package/"/></td>
+                <td><a href="/tracker/CVE-2018-13867">CVE-2018-13867</a></td>
+                <td><span class="red">high**</span></td>
+                <td>yes</td>
+            </tr>
+            <tr>
+                <td><a href="/tracker/source-package/"/></td>
+                <td><a href="/tracker/CVE-2018-13868">CVE-2018-13868</a></td>
+                <td><span class="red">high**</span></td>
+                <td>yes</td>
+            </tr>
+            <tr>
+                <td><a href="/tracker/source-package/"/></td>
+                <td><a href="/tracker/CVE-2018-13869">CVE-2018-13869</a></td>
+                <td><span class="red">high**</span></td>
+                <td>yes</td>
+            </tr>
+            <tr>
+                <td><a href="/tracker/source-package/"/></td>
+                <td><a href="/tracker/CVE-2018-13870">CVE-2018-13870</a></td>
+                <td><span class="red">high**</span></td>
+                <td>yes</td>
+            </tr>
+        </table>
+
+        <p>If a "*" is included in the urgency field, no DSA is planned
+    for this vulnerability.</p><p>If a "**" is included, the urgency field was automatically
+    assigned by the NVD (National Vulnerability Database). Note that this
+    rating is automatically derived from a set of known factors about the
+    issue (such as access complexity, confidentiality impact, exploitability,
+    remediation level, and others). Human intervention is involved in
+    determining the values of these factors, but the rating itself comes
+            from a fully automated formula.</p>
+        <hr/>
+        <form action="/tracker/" method="get" id="searchform">
+            Search for package or bug name:
+            <input onkeyup="onSearch(this.value)" onmousemove="onSearch(this.value)" type="text" name="query"/>
+            <input type="submit" value="Go"/>
+            <a href="/tracker/data/report">Reporting problems</a>
+        </form>
+
+        <footer>
+            <p><a href="/tracker/">Home</a> - <a href="https://www.debian.org/security/">Debian Security</a> - <a href="https://salsa.debian.org/security-tracker-team/security-tracker/blob/master/bin/tracker_service.py">Source</a> <a href="https://salsa.debian.org/security-tracker-team/security-tracker">(Git)</a></p>
+        </footer>
+    </body>
+</html>

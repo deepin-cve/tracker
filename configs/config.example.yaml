@@ -1,0 +1,10 @@
+server:
+  host: '0.0.0.0'
+  port: 10808
+db:
+  cve_file: 'data/cve.db'
+  package_file: 'data/package.db'
+debian_tracker:
+  base_url: 'https://security-tracker.debian.org/tracker'
+  home_url: 'https://security-tracker.debian.org/tracker/status/release/stable'
+packages_file: "data/packages.list"
