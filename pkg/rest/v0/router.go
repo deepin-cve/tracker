@@ -44,12 +44,22 @@ func Route(addr string, debug bool) error {
 }
 
 func getCVEList(c *gin.Context) {
-	// query parameters: package, remote, pre_installed, archived, filters(only urgency), page, count
+	// query parameters: package, status, remote, pre_installed, archived, filters(only urgency), page, count
 	// filters split by ','
 	var params = make(map[string]interface{})
 
-	params["package"] = c.Query("package")
-	params["remote"] = c.Query("remote")
+	pkg := c.Query("package")
+	if len(pkg) != 0 {
+		params["package"] = pkg
+	}
+	remote := c.Query("remote")
+	if len(remote) != 0 {
+		params["remote"] = remote
+	}
+	status := c.Query("status")
+	if len(status) != 0 {
+		params["status"] = status
+	}
 	preInstalled := c.Query("pre_installed")
 	if preInstalled == "true" {
 		params["pre_installed"] = true
@@ -104,10 +114,16 @@ func getCVE(c *gin.Context) {
 func patchCVE(c *gin.Context) {
 	id := c.Param("id")
 	var values = make(map[string]interface{})
-	err := c.Bind(values)
+	err := c.ShouldBind(&values)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
+		})
+		return
+	}
+	if len(values) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "no data has bind",
 		})
 		return
 	}

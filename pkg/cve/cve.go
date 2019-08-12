@@ -13,7 +13,7 @@ func QueryCVEList(params map[string]interface{}, filterList []string,
 	offset, count int) (db.CVEList, int64, error) {
 	var sql = db.CVEDB.Model(&db.CVE{})
 
-	addParamsToSQL(sql, params)
+	sql = addParamsToSQL(sql, params)
 	if len(filterList) != 0 {
 		sql = sql.Where("`urgency` = ?", filterList[0])
 		for i := 1; i < len(filterList); i++ {
@@ -44,9 +44,9 @@ func UpdateCVE(id string, values map[string]interface{}) (*db.CVE, error) {
 	return cve, nil
 }
 
-func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) {
+func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) *gorm.DB {
 	if len(params) == 0 {
-		return
+		return sql
 	}
 
 	var availableList = []struct {
@@ -54,6 +54,7 @@ func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) {
 		useLike bool
 	}{
 		{"package", true},
+		{"status", false},
 		{"pre_installed", false},
 		{"archived", false},
 		{"remote", false},
@@ -69,4 +70,5 @@ func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) {
 				v)
 		}
 	}
+	return sql
 }
