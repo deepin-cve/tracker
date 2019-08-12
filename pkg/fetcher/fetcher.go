@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/db"
+	"github.com/deepin-cve/tracker/pkg/db"
 )
 
 // Filter urgency level

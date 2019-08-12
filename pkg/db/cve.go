@@ -32,6 +32,7 @@ type CVE struct {
 	Description string
 
 	PreInstalled bool
+	Archived     bool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

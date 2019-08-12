@@ -1,16 +1,19 @@
 package cve
 
 import (
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/db"
+	"fmt"
+
+	"github.com/deepin-cve/tracker/pkg/db"
+	"github.com/jinzhu/gorm"
 )
 
 // QueryCVEList query by filter
 // TODO(jouyouyun): add scope filter supported
-func QueryCVEList(pkg string, filterList []string, offset, count int) (db.CVEList, int64, error) {
+func QueryCVEList(params map[string]interface{}, filterList []string,
+	offset, count int) (db.CVEList, int64, error) {
 	var sql = db.CVEDB.Model(&db.CVE{})
-	if len(pkg) != 0 {
-		sql = sql.Where("`package` LIKE '%?%'", pkg)
-	}
+
+	addParamsToSQL(sql, params)
 	if len(filterList) != 0 {
 		sql = sql.Where("`urgency` = ?", filterList[0])
 		for i := 1; i < len(filterList); i++ {
@@ -39,4 +42,31 @@ func UpdateCVE(id string, values map[string]interface{}) (*db.CVE, error) {
 		return nil, err
 	}
 	return cve, nil
+}
+
+func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) {
+	if len(params) == 0 {
+		return
+	}
+
+	var availableList = []struct {
+		key     string
+		useLike bool
+	}{
+		{"package", true},
+		{"pre_installed", false},
+		{"archived", false},
+		{"remote", false},
+	}
+
+	for _, item := range availableList {
+		if v, ok := params[item.key]; ok {
+			compare := "="
+			if item.useLike {
+				compare = "LIKE"
+			}
+			sql = sql.Where(fmt.Sprintf("`%s` %s ?", item.key, compare),
+				v)
+		}
+	}
 }

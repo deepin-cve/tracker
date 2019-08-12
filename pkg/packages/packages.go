@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/db"
+	"github.com/deepin-cve/tracker/pkg/db"
 )
 
 var (

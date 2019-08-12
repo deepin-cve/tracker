@@ -9,12 +9,12 @@ import (
 
 	"net/http"
 
+	"github.com/deepin-cve/tracker/internal/config"
+	"github.com/deepin-cve/tracker/pkg/cve"
+	"github.com/deepin-cve/tracker/pkg/db"
+	"github.com/deepin-cve/tracker/pkg/fetcher"
+	"github.com/deepin-cve/tracker/pkg/packages"
 	"github.com/gin-gonic/gin"
-	"github.com/jouyouyun/deepin-cve-tracker/internal/config"
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/cve"
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/db"
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/fetcher"
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/packages"
 )
 
 const (
@@ -44,19 +44,37 @@ func Route(addr string, debug bool) error {
 }
 
 func getCVEList(c *gin.Context) {
-	// query parameters: name, filters(only urgency), page, count
+	// query parameters: package, remote, pre_installed, archived, filters(only urgency), page, count
 	// filters split by ','
-	var flist []string
+	var params = make(map[string]interface{})
+
+	params["package"] = c.Query("package")
+	params["remote"] = c.Query("remote")
+	preInstalled := c.Query("pre_installed")
+	if preInstalled == "true" {
+		params["pre_installed"] = true
+	} else if preInstalled == "false" {
+		params["pre_installed"] = false
+	}
+	archived := c.Query("archived")
+	if archived == "true" {
+		params["archived"] = true
+	} else if archived == "false" {
+		params["archived"] = false
+	}
+
 	pageStr := c.DefaultQuery("page", "1")
 	page, _ := strconv.Atoi(pageStr)
 	countStr := c.DefaultQuery("count", fmt.Sprint(defaultPageCount))
 	count, _ := strconv.Atoi(countStr)
+
+	var flist []string
 	filters := c.Query("filters")
 	if len(filters) != 0 {
 		flist = strings.Split(filters, ",")
 	}
 
-	infos, total, err := cve.QueryCVEList(c.Query("package"), flist, (page-1)*count, count)
+	infos, total, err := cve.QueryCVEList(params, flist, (page-1)*count, count)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

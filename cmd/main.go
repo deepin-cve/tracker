@@ -5,9 +5,9 @@ import (
 
 	"fmt"
 
-	"github.com/jouyouyun/deepin-cve-tracker/internal/config"
-	"github.com/jouyouyun/deepin-cve-tracker/pkg/db"
-	v0 "github.com/jouyouyun/deepin-cve-tracker/pkg/rest/v0"
+	"github.com/deepin-cve/tracker/internal/config"
+	"github.com/deepin-cve/tracker/pkg/db"
+	v0 "github.com/deepin-cve/tracker/pkg/rest/v0"
 )
 
 var (
