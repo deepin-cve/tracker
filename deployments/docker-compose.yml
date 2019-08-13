@@ -1,0 +1,18 @@
+version: '2'
+
+networks:
+  backend:
+
+services:
+  api:
+    image: 'jouyouyun/deepin-cve-tracker:latest'
+    ports:
+      - '10808:10808'
+    restart: always
+    environment:
+      - GODEBUG=netdns=cgo
+    networks:
+      - backend
+    volumes:
+      - /Data/Docker/data/deepin-cve/tracker/data:/opt/gopath/src/github.com/deepin-cve/tracker/data
+      - /Data/Docker/data/deepin-cve/tracker/configs/config.yaml:/etc/deepin-cve-tracker/config.yaml

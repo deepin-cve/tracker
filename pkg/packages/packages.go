@@ -77,11 +77,15 @@ func ImportPackage(filename string) error {
 			Architecture: items[1],
 			Version:      items[2],
 		}
-		tmp := strings.SplitN(items[3], " ", 2)
-		info.Source = tmp[0]
-		if len(tmp) == 2 {
-			info.SourceVersion = strings.TrimLeft(tmp[1], "(")
-			info.SourceVersion = strings.TrimRight(info.SourceVersion, ")")
+		if len(items[3]) == 0 {
+			info.Source = items[0]
+		} else {
+			tmp := strings.SplitN(items[3], " ", 2)
+			info.Source = tmp[0]
+			if len(tmp) == 2 {
+				info.SourceVersion = strings.TrimLeft(tmp[1], "(")
+				info.SourceVersion = strings.TrimRight(info.SourceVersion, ")")
+			}
 		}
 		infos = append(infos, &info)
 	}
