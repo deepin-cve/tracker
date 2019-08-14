@@ -21,6 +21,7 @@ type Config struct {
 		HomeURL string `yaml:"home_url"`
 	} `yaml:"debian_tracker"`
 	PackagesFile string `yaml:"packages_file"`
+	AccessToken  string `yaml:"access_token"`
 }
 
 const (

@@ -21,6 +21,13 @@ const (
 	defaultPageCount = 15
 )
 
+func checkAccessToken(c *gin.Context) {
+	token := c.GetHeader("Access-Token")
+	if token != config.GetConfig("").AccessToken {
+		c.AbortWithStatus(http.StatusBadRequest)
+	}
+}
+
 // Route start gin router
 func Route(addr string, debug bool) error {
 	if debug {
@@ -34,11 +41,11 @@ func Route(addr string, debug bool) error {
 	cve := v0.Group("cve")
 	cve.GET("", getCVEList)
 	cve.GET("/:id", getCVE)
-	cve.PATCH("/:id", patchCVE)
+	cve.PATCH("/:id", checkAccessToken, patchCVE)
 
 	tools := v0.Group("tools")
-	tools.POST("/cve/fetch", fetchCVE)
-	tools.POST("/packages", initPackages)
+	tools.POST("/cve/fetch", checkAccessToken, fetchCVE)
+	tools.POST("/packages", checkAccessToken, initPackages)
 
 	return eng.Run(addr)
 }

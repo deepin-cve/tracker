@@ -8,3 +8,4 @@ debian_tracker:
   base_url: 'https://security-tracker.debian.org/tracker'
   home_url: 'https://security-tracker.debian.org/tracker/status/release/stable'
 packages_file: "data/packages.list"
+access_token: ''

@@ -33,4 +33,16 @@ func Init(repo, cve string) {
 
 	PkgDB.AutoMigrate(&Package{})
 	CVEDB.AutoMigrate(&CVE{})
+
+	// TODO(jouyouyun): remove at the next version
+	correctCVEUrgency()
+}
+
+func correctCVEUrgency() {
+	CVEDB.Model(&CVE{}).Where("`urgency` = 'high**'").Update("urgency", "high_urgency")
+	CVEDB.Model(&CVE{}).Where("`urgency` = 'medium**'").Update("urgency", "medium_urgency")
+	CVEDB.Model(&CVE{}).Where("`urgency` = 'low**'").Update("urgency", "low_urgency")
+	CVEDB.Model(&CVE{}).Where("`urgency` = 'low'").Update("urgency", "low_urgency")
+	CVEDB.Model(&CVE{}).Where("`urgency` = 'unimportant'").Update("urgency", "unimportant_urgency")
+	CVEDB.Model(&CVE{}).Where("`urgency` = 'not yet assigned'").Update("urgency", "unassigned_urgency")
 }

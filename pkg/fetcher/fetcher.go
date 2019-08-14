@@ -10,77 +10,6 @@ import (
 	"github.com/deepin-cve/tracker/pkg/db"
 )
 
-// Filter urgency level
-type FilterUrgency string
-
-// Filter scope
-type FilterScope string
-
-const (
-	// Filter tracker filter
-	FilterUrgencyHigh           FilterUrgency = "high_urgency"
-	FilterUrgencyMedium                       = "medium_urgency"
-	FilterUrgencyLow                          = "low_urgency"
-	FilterUrgencyUnimportant                  = "unimportant_urgency"
-	FilterUrgencyNotYetAssigned               = "unassigned_urgency"
-	FilterUrgencyEndOfLife                    = "endoflife_urgency"
-)
-
-const (
-	// Filter scope list
-	FilterScopeHideRemote   FilterScope = "remote"
-	FilterScopeHideLocal                = "locale"
-	FilterScopeHideUnclear              = "unclear"
-	FilterScopeUndetermined             = "undetermined_issues"
-	FilterScopeNoDSA                    = "nodsa"
-	FilterScopeIgnore                   = "noignored"
-	FilterScopePostponed                = "nopostponed"
-)
-
-func (filter FilterUrgency) String() string {
-	var ret string
-	switch filter {
-	case FilterUrgencyHigh:
-		ret = "high"
-	case FilterUrgencyMedium:
-		ret = "medium"
-	case FilterUrgencyLow:
-		ret = "low"
-	case FilterUrgencyUnimportant:
-		ret = "unimportant"
-	case FilterUrgencyNotYetAssigned:
-		ret = "not yet assigned"
-	case FilterUrgencyEndOfLife:
-		ret = "end of life"
-	default:
-		ret = "unknown"
-	}
-	return ret
-}
-
-func (filter FilterScope) String() string {
-	var ret string
-	switch filter {
-	case FilterScopeHideRemote:
-		ret = "hide remote"
-	case FilterScopeHideLocal:
-		ret = "hide local"
-	case FilterScopeHideUnclear:
-		ret = "hide unclear"
-	case FilterScopeUndetermined:
-		ret = "include issues to be checked"
-	case FilterScopeNoDSA:
-		ret = "include issues tagged <on-dsa>"
-	case FilterScopeIgnore:
-		ret = "include issues tagged <no-ignored>"
-	case FilterScopePostponed:
-		ret = "include issues tagged <postponed>"
-	default:
-		ret = "unknown"
-	}
-	return ret
-}
-
 func Fetch(uri string, filterList []string) (db.DebianCVEList, error) {
 	var values = make(url.Values)
 	values["filter"] = filterList
@@ -119,6 +48,7 @@ func Fetch(uri string, filterList []string) (db.DebianCVEList, error) {
 			}
 		})
 		if len(cve.ID) != 0 {
+			cve.FixUrgency()
 			cveList = append(cveList, &cve)
 		}
 	})
