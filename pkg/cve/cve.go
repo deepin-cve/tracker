@@ -9,15 +9,18 @@ import (
 
 // QueryCVEList query by filter
 // TODO(jouyouyun): add scope filter supported
-func QueryCVEList(params map[string]interface{}, filterList []string,
-	offset, count int) (db.CVEList, int64, error) {
+func QueryCVEList(params map[string]interface{}, offset, count int) (db.CVEList, int64, error) {
 	var sql = db.CVEDB.Model(&db.CVE{})
-
 	sql = addParamsToSQL(sql, params)
-	if len(filterList) != 0 {
-		sql = sql.Where("`urgency` = ?", filterList[0])
-		for i := 1; i < len(filterList); i++ {
-			sql = sql.Or("`urgency` = ?", filterList[i])
+	value, ok := params["sort"]
+	if ok {
+		sort, ok := value.(string)
+		if ok && len(sort) != 0 {
+			var order string
+			if sort == "updated_at" {
+				order = " desc"
+			}
+			sql = sql.Order(fmt.Sprintf("%s%s", sort, order))
 		}
 	}
 
@@ -54,7 +57,6 @@ func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) *gorm.DB {
 		useLike bool
 	}{
 		{"package", true},
-		{"status", false},
 		{"pre_installed", false},
 		{"archived", false},
 		{"remote", false},
@@ -68,6 +70,34 @@ func addParamsToSQL(sql *gorm.DB, params map[string]interface{}) *gorm.DB {
 			}
 			sql = sql.Where(fmt.Sprintf("`%s` %s ?", item.key, compare),
 				v)
+		}
+	}
+	return addListParamsToSQL(sql, params)
+}
+
+func addListParamsToSQL(sql *gorm.DB, params map[string]interface{}) *gorm.DB {
+	var availableList = []struct {
+		key    string
+		column string
+	}{
+		{"status", "status"},
+		{"filters", "urgency"},
+	}
+	for _, info := range availableList {
+		values, ok := params[info.key]
+		if !ok {
+			continue
+		}
+		list, ok := values.([]string)
+		if !ok {
+			continue
+		}
+		if len(list) != 0 {
+			col := fmt.Sprintf("`%s` = ?", info.column)
+			sql = sql.Where(col, list[0])
+			for i := 1; i < len(list); i++ {
+				sql = sql.Or(col, list[i])
+			}
 		}
 	}
 	return sql

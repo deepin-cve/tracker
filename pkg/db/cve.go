@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -97,18 +98,18 @@ type DebianCVEList []*DebianCVE
 
 // FixUrgency correct urgency
 func (info *DebianCVE) FixUrgency() {
-	switch info.Urgency {
-	case "high**", "high":
+	switch {
+	case strings.HasPrefix(info.Urgency, "high"):
 		info.Urgency = string(FilterUrgencyHigh)
-	case "medium**", "medium":
+	case strings.HasPrefix(info.Urgency, "medium"):
 		info.Urgency = string(FilterUrgencyMedium)
-	case "low", "low**":
+	case strings.HasPrefix(info.Urgency, "low"):
 		info.Urgency = string(FilterUrgencyLow)
-	case "unimportant":
+	case strings.HasPrefix(info.Urgency, "unimportant"):
 		info.Urgency = string(FilterUrgencyUnimportant)
-	case "not yet assigned":
+	case strings.HasPrefix(info.Urgency, "not yet assigned"):
 		info.Urgency = string(FilterUrgencyNotYetAssigned)
-	case "end-of-life":
+	case strings.HasPrefix(info.Urgency, "end-of-life"):
 		info.Urgency = string(FilterUrgencyEndOfLife)
 	}
 }
@@ -125,7 +126,7 @@ type CVE struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt *time.Time
+	DeletedAt *time.Time `json:"-"`
 }
 
 // CVEList an array for CVE
@@ -189,4 +190,23 @@ func NewCVE(id string) (*CVE, error) {
 // UpdateCVE update cve info with values
 func UpdateCVE(diff map[string]interface{}) error {
 	return CVEDB.Model(&CVE{}).Updates(diff).Error
+}
+
+// ValidStatus validity status whether right
+func ValidStatus(status string) bool {
+	switch status {
+	case CVEStatusUnprocessed, CVEStatusProcessing, CVEStatusFinished, CVEStatusCanceled:
+		return true
+	}
+	return false
+}
+
+// ValidColumn validity cve table whether has this column name
+func ValidColumn(name string) bool {
+	switch name {
+	case "id", "package", "urgency", "remote", "status", "patch", "description",
+		"pre_installed", "archived", "created_at", "updated_at":
+		return true
+	}
+	return false
 }

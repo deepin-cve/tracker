@@ -51,8 +51,9 @@ func Route(addr string, debug bool) error {
 }
 
 func getCVEList(c *gin.Context) {
-	// query parameters: package, status, remote, pre_installed, archived, filters(only urgency), page, count
-	// filters split by ','
+	// query parameters: package, status(multi status), remote, pre_installed, archived, filters(only urgency), page, count, sort
+	// status and filters split by ','
+	// sort available values only should be table column name, such as: package, updated_at, urgency etc.
 	var params = make(map[string]interface{})
 
 	pkg := c.Query("package")
@@ -62,10 +63,6 @@ func getCVEList(c *gin.Context) {
 	remote := c.Query("remote")
 	if len(remote) != 0 {
 		params["remote"] = remote
-	}
-	status := c.Query("status")
-	if len(status) != 0 {
-		params["status"] = status
 	}
 	preInstalled := c.Query("pre_installed")
 	if preInstalled == "true" {
@@ -79,19 +76,29 @@ func getCVEList(c *gin.Context) {
 	} else if archived == "false" {
 		params["archived"] = false
 	}
+	sort := c.Query("sort")
+	if len(sort) != 0 {
+		if db.ValidColumn(sort) {
+			params["sort"] = sort
+		}
+	}
 
 	pageStr := c.DefaultQuery("page", "1")
 	page, _ := strconv.Atoi(pageStr)
 	countStr := c.DefaultQuery("count", fmt.Sprint(defaultPageCount))
 	count, _ := strconv.Atoi(countStr)
 
-	var flist []string
-	filters := c.Query("filters")
-	if len(filters) != 0 {
-		flist = strings.Split(filters, ",")
+	statusList := c.Query("status")
+	if len(statusList) != 0 {
+		params["status"] = strings.Split(statusList, ",")
 	}
 
-	infos, total, err := cve.QueryCVEList(params, flist, (page-1)*count, count)
+	filters := c.Query("filters")
+	if len(filters) != 0 {
+		params["filters"] = strings.Split(filters, ",")
+	}
+
+	infos, total, err := cve.QueryCVEList(params, (page-1)*count, count)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -133,6 +140,20 @@ func patchCVE(c *gin.Context) {
 			"error": "no data has bind",
 		})
 		return
+	}
+
+	// check status
+	value, ok := values["status"]
+	if ok {
+		status, ok := value.(string)
+		if ok && len(status) != 0 {
+			if !db.ValidStatus(status) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid status: " + status,
+				})
+				return
+			}
+		}
 	}
 
 	info, err := cve.UpdateCVE(id, values)
