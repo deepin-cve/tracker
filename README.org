@@ -1,0 +1,218 @@
+#+OPTIONS:   *:t <:nil timestamp:nil toc:nil ^:{} num:nil date:nil
+#+TITLE: Debian CVE Tracker
+#+DATE: 2019-08-28T11:23:21+08:00
+
+[[https://security-tracker.debian.org/tracker/status/release/stable][Debian CVE Tracker]] 上记录了很多安全漏洞，有些 =Debian= 会在当前版本修复，但有些不会。由于 =deepin= 会在当前版本上停留很久，所以需要修复这些安全漏洞。
+这就需要自行追踪 =CVE Bug= 的状态和添加 =patch= ，因此写了个程序 [[https://github.com/deepin-cve/tracker][deepin-cve-tracker]] 来管理。
+
+本文将介绍 =deepin-cve-tracker= 的使用方法和 =patch= 的添加方法。
+
+* Deepin CVE Tracker
+
+=deepin-cve-tracker= 设计用来追踪 =Debain CVE Bug= ，会先将 =Debian= 中的数据爬入自己的数据库中，然后做标记来追踪 =bug= 的处理状态。
+提供 =HTTP= 接口供用户使用，使用 =docker= 部署。
+
+** 核心数据接口
+
+*** =Bug Filters=
+
+因为需要导入 =Debian CVE Tracker= 的数据，所以这里先介绍下。 =Debian= 中 =Bug= 标记有严重级别(=urgency=)，每种级别下又有 =scope= 标记。
+
+**** =urgency=
+
++ =high_urgency= : 高级
++ =medium_urgency= : 中级
++ =low_urgency= : 低级
++ =unimportant_urgency= : 不重要
++ =unassigned_urgency= : 未指派
++ =endoflife_urgency= : 已终止
+
+**** =scope=
+
++ =remote= : 隐藏 =remote= 为 =yes= 的 =bug=
++ =locale= : 隐藏 =remote= 为 =no= 的 =bug=
++ =unclear= : 隐藏 =remote= 为 =?= 的 =bug=
++ =undetermined_issues= : 显示未检测的 =bug=
++ =nodsa= : 显示未公布的 =bug=
++ =noignored= : 显示忽略的 =bug=
++ =nopostponed= : 显示推迟的 =bug=
+
+*** 表
+
+**** =packages=
+
+结构如下：
+
+#+BEGIN_SRC sql
+CREATE TABLE IF NOT EXISTS "packages" (
+    "package" varchar(255),
+    "source" varchar(255),
+    "version" varchar(255),
+    "architecture" varchar(255),
+    "source_version" varchar(255) ,
+ PRIMARY KEY ("package"));
+#+END_SRC
+
+**** =cves=
+
+结构如下：
+
+#+BEGIN_SRC sql
+CREATE TABLE IF NOT EXISTS "cves" (
+    "id" varchar(255),
+    "package" varchar(255),
+    "urgency" varchar(255),
+    "remote" varchar(255),
+    "status" varchar(255),
+    "patch" varchar(255),
+    "description" varchar(255),
+    "pre_installed" bool,
+    "archived" bool,
+    "created_at" datetime,
+    "updated_at" datetime,
+    "deleted_at" datetime ,
+ PRIMARY KEY ("id"));
+#+END_SRC
+
+=status= 的可用值为：
++ =unprocessed= : 还未处理的 =bug= ，默认状态
++ =processing= : 已处理但未完成的 =bug= ，原因可能是没有提交或者提交的改动太大，等待之后继续处理
++ =finished= : 已添加了 =patch= 的 =bug=
++ =canceled= : 测试未重现的 =bug=
+
+** 接口
+
+#+BEGIN_SRC shell
+GET    /v0/cve
+GET    /v0/cve/:id
+PATCH  /v0/cve/:id
+POST   /v0/tools/cve/fetch
+POST   /v0/tools/packages
+#+END_SRC
+
+其中除了 =GET= 接口不需要 =token= ，其它接口都需要在 =HTTP Header= 中设置 =Access-Token= ， =token= 由服务管理员提供。
+
+接口中的 =id= 指 =CVE Bug= 的 =id= ，如： =CVE-2018-14404= ， =PATCH/POST= 请求的数据为 =JSON= 格式，需要在 =HTTP Header= 中设置 =Content-Type:application/json= 。
+
+下面将简单描述每个接口的功能：
+
+*** =GET /v0/cve=
+
+获取 =CVE Bug= 列表，默认返回第一页的数据，每页数据的大小为 =15=
+
+可用的查询参数为： =package, remote, pre_installed, archived, page, count, sort, status, filters= ，说明如下：
+
++ =package= : 源码包名
++ =remote= : 是否为远程漏洞，值可为： =yes, no, ?=
++ =pre_installed= : =ISO= 中是否预装
++ =archived= : 是否已归档，当 =bug= 在 =package= 更新后验证通过，则将其归档
++ =page= : 当前页
++ =count= : 每页的数据大小
++ =sort= : 排序字段，默认升序，如果传入的是 =updated_at= 则降序，可用字段为 =cves= 表中的所有字段
++ =status= : 当前 =bug= 的状态，可设置多个值，以 =,= 分割
++ =filters= : 当前 =bug= 的 =urgency= ，可设置多个值，以 =,= 分割
+
+接口返回时会在 =Response Header= 中设置以下值：
+
++ =X-Resource-Page= : 当前页面
++ =X-Resource-Total= : 当前查询参数下的结果总数
++ =X-Resource-Count= : 当前每页显示的大小
+
+这里给出几个例子：
+
++ 查询状态为 =finished= 和 =cancelled= 的 =bug=
+
+  =curl -X GET -H 'Content-Type:application/json' http://<host>:<port>/v0/cve?status=finished,cancelled=
+
++ 查询 =urgency= 为 =high_urgency= 和 =medium_urgency= 并且预装的 =bug=
+
+  =curl -X GET -H 'Content-Type:application/json' http://<host>:<port>/v0/cve?pre_installed=true&filters=high_urgency,medium_urgency=
+
+*** =GET /v0/cve/:id=
+
+查询指定 =CVE Bug ID= 的信息
+
+*** =PATCH /v0/cve/:id=
+
+修改指定 =CVE Bug ID= 的信息
+
+*** =PATCH /v0/tools/cve/fetch=
+
+导入 =Debian CVE Tracker= 上的 =bug= ，如导入全部的高级 =bug= ：
+
+#+BEGIN_SRC shell
+curl -X POST -H 'Content-Type:application/json' -H 'Access-Token:<token>' \
+http://<host>:<port>/v0/tools/cve/fetch?filters=high_urgency,undetermined_issues,nodsa,noignored,nopostponed=
+#+END_SRC
+
+*** =PATCH /v0/tools/packages=
+
+重新初始化预装的安装包信息，预装的包的路径在配置文件中指定，初始化时需确保文件存在，如要更新就替换此文件，然后调用这个接口。
+
+预装包信息由命令 =dpkg-query -f '${Package},${Architecture},${Version},${Source}\n' -W> packages.list= 生成
+
+=curl -X POST -H 'Content-Type:application/json' -H 'Access-Token:<token>' http://<host>:<port>/v0/tools/packages=
+
+--------
+
+* PATCH
+
+对 =bug= 打 =patch= 时请按照以下步骤操作：
+
+1. 安装 =package= 的编译依赖
+
+   =sudo apt-get build-dep <package>=
+
+2. 下载源码
+
+   =apt-get source <package>=
+
+3. 清理源码包
+
+   清理应用的 =patch= : =quilt pop -af= ，有些 =package= 不是直接使用 =patch= 而是自行处理的，在 =debian/rules= 中会指明。
+   如 =python2.7= 就需要使用 =./debian/rules unpatch= 来清理。
+
+   清理编译残留的文件 : =./debian/rules clean=
+
+4. 初始化
+
+   =git init && git add . && git commit -m "Init"=
+
+5. 切换分支开始 =patch=
+
+   以 =CVE Bug ID= 创建新分支 =git checkout -b cve/<id>= ，然后应用之前的 =patch= : =dpkg-source -b ./= ，
+   同样有些 =packages= 是在 =debian/rules= 指定了 =patch= 应用方法，如 =python2.7= 就是 =./debian/rules update-patches=
+
+   应用完 =patch= 后执行 =git add .= ，此时就准备好了源码环境，执行 =patch -p1 < <CVE Bug ID>.diff= 来应用，最后编译测试 =bug= 是否解决。
+
+   测试无误后就清除所有修改的文件，删除此分支，并切会 =master= 。
+
+6. 提交 =patch=
+
+   在 =debian/patches/= 目录以 =<CVE Bug ID>.patch= 为名创建 =patch= ，并修改 =debian/patches/series= 文件添加此 =patch= 。
+
+   然后提交 =git add . && git commit -m "patch: <CVE Bug ID>"=
+
+
+--------
+
+对于已在 [[https://gitlab.deepin.io/debian-patch][debian-patch]] 创建了的 =package= 则直接 =clone= 然后打 =patch= 。
+
+对于 =github/gitlab= 上的提交，可在其提交的 =url= 的后面加上 =.diff= 来获取 =diff= 文件，添加 =.patch= 来获取 =patch= 文件。
+
+最后提供一份简单的 =patch= 模板：
+
+#+BEGIN_SRC patch
+From: the author for this patch
+Subject: the patch summary
+Origin: the upstream commit or the patch source
+
+Some descriptions
+
+Bug: the bug in this project
+Bug-Debian: the bug in debian
+Last-Update: 2019-08-12
+---
+
+diff info
+#+END_SRC
