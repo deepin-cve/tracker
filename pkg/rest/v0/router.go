@@ -106,9 +106,9 @@ func getCVEList(c *gin.Context) {
 		return
 	}
 
-	c.Header("X-Resource-Page", fmt.Sprint(page))
+	c.Header("X-Current-Page", fmt.Sprint(page))
 	c.Header("X-Resource-Total", fmt.Sprint(total))
-	c.Header("X-Resource-Count", fmt.Sprint(count))
+	c.Header("X-Page-Size", fmt.Sprint(count))
 	c.JSON(http.StatusOK, infos)
 }
 

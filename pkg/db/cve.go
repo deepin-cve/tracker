@@ -8,10 +8,12 @@ import (
 
 const (
 	// CVE status available values
-	CVEStatusUnprocessed = "unprocessed"
-	CVEStatusProcessing  = "processing"
-	CVEStatusCanceled    = "canceled"
-	CVEStatusFinished    = "finished"
+	CVEStatusUnprocessed = "unprocessed" // 未处理
+	CVEStatusProcessing  = "processing"  // 处理中
+	CVEStatusPostpone    = "postpone"    // 延后
+	CVEStatusHold        = "hold"        // 搁置
+	CVEStatusCanceled    = "canceled"    // 取消
+	CVEStatusFinished    = "finished"    // 完成
 )
 
 // Filter urgency level
@@ -195,7 +197,8 @@ func UpdateCVE(diff map[string]interface{}) error {
 // ValidStatus validity status whether right
 func ValidStatus(status string) bool {
 	switch status {
-	case CVEStatusUnprocessed, CVEStatusProcessing, CVEStatusFinished, CVEStatusCanceled:
+	case CVEStatusUnprocessed, CVEStatusProcessing, CVEStatusPostpone, CVEStatusHold,
+		CVEStatusFinished, CVEStatusCanceled:
 		return true
 	}
 	return false
