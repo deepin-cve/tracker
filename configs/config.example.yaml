@@ -5,6 +5,7 @@ db:
   cve_file: 'data/cve.db'
   package_file: 'data/package.db'
   session_file: 'data/session.db'
+  log_file: 'data/log.db'
 debian_tracker:
   base_url: 'https://security-tracker.debian.org/tracker'
   home_url: 'https://security-tracker.debian.org/tracker/status/release/stable'

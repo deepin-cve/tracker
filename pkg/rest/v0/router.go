@@ -37,6 +37,8 @@ func checkAccessToken(c *gin.Context) {
 		_ = tk.Delete()
 		c.AbortWithStatus(http.StatusUnauthorized)
 	}
+
+	c.Set("username", tk.Username)
 }
 
 // Route start gin router
@@ -179,6 +181,12 @@ func patchCVE(c *gin.Context) {
 		return
 	}
 
+	insertLog(&db.Log{
+		Operator:    c.GetString("username"),
+		Action:      db.LogActionPatchCVE,
+		Description: id,
+	})
+
 	c.JSON(http.StatusOK, info)
 }
 
@@ -226,6 +234,13 @@ func fetchCVE(c *gin.Context) {
 		}
 		fmt.Println("Insert debian cve done:", filters)
 	}(infos)
+
+	insertLog(&db.Log{
+		Operator:    c.GetString("username"),
+		Action:      db.LogActionFecthDebian,
+		Description: filters,
+	})
+
 	c.String(http.StatusAccepted, "")
 }
 
@@ -238,6 +253,13 @@ func initPackages(c *gin.Context) {
 		}
 		fmt.Println("Start to insert packages done")
 	}()
+
+	insertLog(&db.Log{
+		Operator:    c.GetString("username"),
+		Action:      db.LogActionInitPackage,
+		Description: db.LogActionInitPackage.String(),
+	})
+
 	c.String(http.StatusAccepted, "")
 }
 
@@ -286,6 +308,12 @@ func login(c *gin.Context) {
 		return
 	}
 
+	insertLog(&db.Log{
+		Operator:    data.Username,
+		Action:      db.LogActionLogin,
+		Description: db.LogActionLogin.String(),
+	})
+
 	c.Header("Access-Token", tk.Token)
 	c.String(http.StatusOK, "")
 }
@@ -315,5 +343,19 @@ func logout(c *gin.Context) {
 		})
 		return
 	}
+
+	insertLog(&db.Log{
+		Operator:    tk.Username,
+		Action:      db.LogActionLogout,
+		Description: db.LogActionLogout.String(),
+	})
+
 	c.String(http.StatusOK, "")
+}
+
+func insertLog(log *db.Log) {
+	err := log.Create()
+	if err != nil {
+		fmt.Println("Failed to insert log:", err, log.Action.String(), log.Description)
+	}
 }

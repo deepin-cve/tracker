@@ -16,6 +16,7 @@ type Config struct {
 		CVEFile     string `yaml:"cve_file"`
 		PackageFile string `yaml:"package_file"`
 		SessionFile string `yaml:"session_file"`
+		LogFile     string `yaml:"log_file"`
 	} `yaml:"db"`
 	DebianTracker struct {
 		BaseURL string `yaml:"base_url"`
