@@ -10,10 +10,12 @@ var (
 	PkgDB *gorm.DB
 	// CVEDB cve db handler
 	CVEDB *gorm.DB
+	// SessionDB session db handler
+	SessionDB *gorm.DB
 )
 
 // Init init db
-func Init(repo, cve string) {
+func Init(repo, cve, session string) {
 	var err error
 	PkgDB, err = gorm.Open("sqlite3", repo)
 	if err != nil {
@@ -31,6 +33,12 @@ func Init(repo, cve string) {
 	CVEDB.DB().SetMaxIdleConns(10)
 	CVEDB.DB().SetMaxOpenConns(100)
 
+	SessionDB, err = gorm.Open("sqlite3", session)
+	if err != nil {
+		panic(err)
+	}
+
 	PkgDB.AutoMigrate(&Package{})
 	CVEDB.AutoMigrate(&CVE{})
+	SessionDB.AutoMigrate(&Session{})
 }

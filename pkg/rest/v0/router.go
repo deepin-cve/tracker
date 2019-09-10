@@ -13,6 +13,7 @@ import (
 	"github.com/deepin-cve/tracker/pkg/cve"
 	"github.com/deepin-cve/tracker/pkg/db"
 	"github.com/deepin-cve/tracker/pkg/fetcher"
+	"github.com/deepin-cve/tracker/pkg/ldap"
 	"github.com/deepin-cve/tracker/pkg/packages"
 	"github.com/gin-gonic/gin"
 )
@@ -23,8 +24,18 @@ const (
 
 func checkAccessToken(c *gin.Context) {
 	token := c.GetHeader("Access-Token")
-	if token != config.GetConfig("").AccessToken {
-		c.AbortWithStatus(http.StatusBadRequest)
+	if len(token) == 0 {
+		c.AbortWithStatus(http.StatusUnauthorized)
+	}
+
+	var tk = db.Session{Token: token}
+	err := tk.Get()
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+	}
+	if tk.Expired() {
+		_ = tk.Delete()
+		c.AbortWithStatus(http.StatusUnauthorized)
 	}
 }
 
@@ -37,6 +48,10 @@ func Route(addr string, debug bool) error {
 
 	// TODO(jouyouyun): add session authority
 	v0 := eng.Group("v0")
+
+	session := v0.Group("session")
+	session.POST("/login", login)
+	session.DELETE("/logout", logout)
 
 	cve := v0.Group("cve")
 	cve.GET("", getCVEList)
@@ -224,4 +239,81 @@ func initPackages(c *gin.Context) {
 		fmt.Println("Start to insert packages done")
 	}()
 	c.String(http.StatusAccepted, "")
+}
+
+func login(c *gin.Context) {
+	var data = struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{}
+
+	err := c.ShouldBindJSON(&data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	ldapc := config.GetConfig("").LDAP
+	cli, err := ldap.NewClient(ldapc.Host, ldapc.Port, ldapc.Dn, ldapc.Password, ldapc.UserSearch)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = cli.CheckUserPassword(data.Username, data.Password)
+	cli.Close()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	tk := db.Session{
+		Token:    string(db.GenToken()),
+		Username: data.Username,
+		Expires:  db.DefaultExpires,
+	}
+	err = tk.Create()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Header("Access-Token", tk.Token)
+	c.String(http.StatusOK, "")
+}
+
+func logout(c *gin.Context) {
+	token := c.GetHeader("Access-Token")
+	if len(token) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "no token found",
+		})
+		return
+	}
+
+	var tk = db.Session{Token: token}
+	err := tk.Get()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = tk.Delete()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.String(http.StatusOK, "")
 }

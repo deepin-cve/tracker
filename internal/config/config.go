@@ -15,13 +15,21 @@ type Config struct {
 	DB struct {
 		CVEFile     string `yaml:"cve_file"`
 		PackageFile string `yaml:"package_file"`
+		SessionFile string `yaml:"session_file"`
 	} `yaml:"db"`
 	DebianTracker struct {
 		BaseURL string `yaml:"base_url"`
 		HomeURL string `yaml:"home_url"`
 	} `yaml:"debian_tracker"`
+	LDAP struct {
+		Host        string `yaml:"host"`
+		Port        int    `yaml:"port"`
+		Dn          string `yaml:"dn"`
+		Password    string `yaml:"password"`
+		UserSearch  string `yaml:"user_search"`
+		GroupSearch string `yaml:"group_search"`
+	} `yaml:"ldap"`
 	PackagesFile string `yaml:"packages_file"`
-	AccessToken  string `yaml:"access_token"`
 }
 
 const (
