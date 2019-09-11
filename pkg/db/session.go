@@ -22,12 +22,12 @@ const (
 // Create save session
 func (s *Session) Create() error {
 	s.CreatedAt = time.Now()
-	return SessionDB.Create(s).Error
+	return CommonDB.Create(s).Error
 }
 
 // Get get session by token
 func (s *Session) Get() error {
-	return SessionDB.Where("`token` = ?", s.Token).First(s).Error
+	return CommonDB.Where("`token` = ?", s.Token).First(s).Error
 }
 
 // Expired token whether expired
@@ -37,7 +37,7 @@ func (s *Session) Expired() bool {
 
 // Delete delete token
 func (s *Session) Delete() error {
-	return SessionDB.Where("`token` = ?", s.Token).Delete(&Session{}).Error
+	return CommonDB.Where("`token` = ?", s.Token).Delete(&Session{}).Error
 }
 
 // SessionClean clean expired session
@@ -47,12 +47,12 @@ func SessionClean() error {
 	var count int64
 	var sessions []*Session
 	for offset < count {
-		err := SessionDB.Count(&count).Offset(offset).Limit(limit).Find(&sessions).Error
+		err := CommonDB.Count(&count).Offset(offset).Limit(limit).Find(&sessions).Error
 		if err != nil {
 			return err
 		}
 		for _, session := range sessions {
-			SessionDB.Where("`token` = ?", session.Token).Delete(&Session{})
+			CommonDB.Where("`token` = ?", session.Token).Delete(&Session{})
 		}
 		offset += int64(len(sessions))
 	}
@@ -61,7 +61,7 @@ func SessionClean() error {
 
 var (
 	_sources = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-	_len     = 16
+	_len     = 32
 )
 
 func init() {

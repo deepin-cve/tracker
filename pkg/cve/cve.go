@@ -9,8 +9,14 @@ import (
 
 // QueryCVEList query by filter
 // TODO(jouyouyun): add scope filter supported
-func QueryCVEList(params map[string]interface{}, offset, count int) (db.CVEList, int64, error) {
-	var sql = db.CVEDB.Model(&db.CVE{})
+func QueryCVEList(params map[string]interface{}, offset, count int,
+	version string) (db.CVEList, int64, error) {
+	handler := db.GetDBHandler(version)
+	if handler == nil {
+		return nil, 0, fmt.Errorf("No db handler found for version '%s'", version)
+	}
+
+	var sql = handler.Model(&db.CVE{})
 	sql = addParamsToSQL(sql, params)
 	value, ok := params["sort"]
 	if ok {
@@ -34,13 +40,13 @@ func QueryCVEList(params map[string]interface{}, offset, count int) (db.CVEList,
 }
 
 // UpdateCVE modify cve info
-func UpdateCVE(id string, values map[string]interface{}) (*db.CVE, error) {
-	cve, err := db.NewCVE(id)
+func UpdateCVE(id, version string, values map[string]interface{}) (*db.CVE, error) {
+	cve, err := db.NewCVE(id, version)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.CVEDB.Model(cve).Updates(values).Error
+	err = cve.Update(values, version)
 	if err != nil {
 		return nil, err
 	}

@@ -17,14 +17,19 @@ type Package struct {
 type PackageList []*Package
 
 // NrePackage query package from db
-func NewPackage(pkg, arch string) (*Package, error) {
+func NewPackage(pkg, arch, dbVersion string) (*Package, error) {
 	if len(pkg) == 0 || len(arch) == 0 {
 		return nil, fmt.Errorf("invalid package(%q) or architecture(%q)",
 			pkg, arch)
 	}
 
+	handler := GetDBHandler(dbVersion)
+	if handler == nil {
+		return nil, fmt.Errorf("Not found db hander for version '%s'", dbVersion)
+	}
+
 	var info Package
-	err := PkgDB.Where("`package` = ? AND `architecture` = ?",
+	err := handler.Where("`package` = ? AND `architecture` = ?",
 		pkg, arch).First(&info).Error
 	if err != nil {
 		return nil, err
@@ -33,13 +38,18 @@ func NewPackage(pkg, arch string) (*Package, error) {
 }
 
 // IsSourceExists query whether source exists
-func IsSourceExists(source string) bool {
+func IsSourceExists(source, dbVersion string) bool {
 	if len(source) == 0 {
 		return false
 	}
 
+	handler := GetDBHandler(dbVersion)
+	if handler == nil {
+		return false
+	}
+
 	var infos PackageList
-	err := PkgDB.Model(&Package{}).Where("`source` = ?", source).Find(&infos).Error
+	err := handler.Model(&Package{}).Where("`source` = ?", source).Find(&infos).Error
 	if err != nil {
 		return false
 	}
@@ -50,8 +60,13 @@ func IsSourceExists(source string) bool {
 }
 
 // Create insert package list
-func (infos PackageList) Create() error {
-	var tx = PkgDB.Begin()
+func (infos PackageList) Create(dbVersion string) error {
+	handler := GetDBHandler(dbVersion)
+	if handler == nil {
+		return fmt.Errorf("Not found db hander for version '%s'", dbVersion)
+	}
+
+	var tx = handler.Begin()
 	for _, info := range infos {
 		err := tx.Model(&Package{}).Create(info).Error
 		if err != nil {

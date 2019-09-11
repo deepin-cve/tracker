@@ -13,7 +13,7 @@ const (
 	CVEStatusPostpone    = "postpone"    // 延后
 	CVEStatusHold        = "hold"        // 搁置
 	CVEStatusCanceled    = "canceled"    // 取消
-	CVEStatusFinished    = "finished"    // 完成
+	CVEStatusFixed       = "fixed"       // 完成
 )
 
 // Filter urgency level
@@ -155,8 +155,12 @@ func (list DebianCVEList) Dump() {
 }
 
 // Create insert cve record, if exists, ignore
-func (list CVEList) Create() error {
-	var tx = CVEDB.Begin()
+func (list CVEList) Create(version string) error {
+	handler := GetDBHandler(version)
+	if handler == nil {
+		return fmt.Errorf("Not found db hander for version '%s'", version)
+	}
+	var tx = handler.Begin()
 
 	for _, cve := range list {
 		var info CVE
@@ -175,14 +179,23 @@ func (list CVEList) Create() error {
 }
 
 // Save save cve info
-func (cve *CVE) Save() error {
-	return CVEDB.Save(cve).Error
+func (cve *CVE) Save(version string) error {
+	handler := GetDBHandler(version)
+	if handler == nil {
+		return fmt.Errorf("Not found db hander for version '%s'", version)
+	}
+	return handler.Save(cve).Error
 }
 
 // NewCVE query cve by id
-func NewCVE(id string) (*CVE, error) {
+func NewCVE(id, version string) (*CVE, error) {
+	handler := GetDBHandler(version)
+	if handler == nil {
+		return nil, fmt.Errorf("Not found db hander for version '%s'", version)
+	}
+
 	var cve CVE
-	err := CVEDB.Where("`id` = ?", id).First(&cve).Error
+	err := handler.Where("`id` = ?", id).First(&cve).Error
 	if err != nil {
 		return nil, err
 	}
@@ -190,15 +203,19 @@ func NewCVE(id string) (*CVE, error) {
 }
 
 // UpdateCVE update cve info with values
-func UpdateCVE(diff map[string]interface{}) error {
-	return CVEDB.Model(&CVE{}).Updates(diff).Error
+func (cve *CVE) Update(diff map[string]interface{}, version string) error {
+	handler := GetDBHandler(version)
+	if handler == nil {
+		return fmt.Errorf("Not found db hander for version '%s'", version)
+	}
+	return handler.Model(cve).Updates(diff).Error
 }
 
 // ValidStatus validity status whether right
 func ValidStatus(status string) bool {
 	switch status {
 	case CVEStatusUnprocessed, CVEStatusProcessing, CVEStatusPostpone, CVEStatusHold,
-		CVEStatusFinished, CVEStatusCanceled:
+		CVEStatusFixed, CVEStatusCanceled:
 		return true
 	}
 	return false

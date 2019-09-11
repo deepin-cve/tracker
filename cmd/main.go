@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	var c = config.GetConfig(*conf)
-	db.Init(c.DB.PackageFile, c.DB.CVEFile, c.DB.SessionFile, c.DB.LogFile)
+	db.Init(c.DBDir)
 
 	err := v0.Route(fmt.Sprintf("%s:%d", c.Server.Host, c.Server.Port),
 		*debug)
