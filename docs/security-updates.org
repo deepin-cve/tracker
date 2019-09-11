@@ -1,0 +1,101 @@
+#+OPTIONS: toc:nil num:nil timestamp:nil date:nil ^:{} <:{}
+#+TITLE: 安全更新流程
+
+** 处理流程
+
+对于安全漏洞， 我们是在 [[https://security-tracker.debian.org/tracker][Security Tracker]] 的基础上进行处理，处理的流程如下：
+
+1. 理解 =bug= 评估漏洞是否存在
+
+   若被 =debian= 检测过，则会标记漏洞是否存在。但有些 =bug= 还未检测，这就需要测试是否能够重现。
+
+   若漏洞不存在，则进行标记；否则继续下一步(部分无条件重现的 =bug= ，也继续下一步)。
+
+2. 查看是否有 =patch= 存在
+
+   如果 =bug= 在详细页面标明了 =patch= 地址，然后继续向下处理；否则就将其标记为无 =patch= 延后处理。
+
+3. 初始化项目
+
+   使用 =apt-get source <package>= 下载项目源码，然后执行以下步骤初始化项目
+
+   1. 安装编译依赖
+
+      =sudo apt-get build-dep <package>=
+
+   2. 清理应用的 =patch=
+
+      =quilt pop -af=
+
+   3. 清理编译残留的文件
+
+      =./debian/rules clean=
+
+   4. 初始化
+
+      =git init && git add . && git commit -m "Init"=
+
+4. 应用 =bug= 的 =patch=
+
+   在应用 =patch= 之前需要先将原有的 =patch= 都应用上，然后再应用 =bug= 的 =patch= ，具体步骤如下：
+
+   1. 创建新分支
+
+      以 =bug id= 创建新分支(=git checkout -b <bug id>=)。
+
+   2. 应用原有的 =patch=
+
+      使用命令 =dpkg-source -b ./= 应用原有的 =patch= ，但有些项目是在 =debian/rules= 里指定了 =patch= 的应用方法，如 =python2.7= 就该使用 =./debian/rules update-patches= 。
+      然后添加改动的文件 =git add .= 。
+
+   3. 应用 =patch=
+
+      执行 =patch -p1 < <bug patch>= 应用
+
+5. 打包测试
+
+   执行 =dpkg-buildpackage -us -uc -nc= 打包，然后安装测试，若验证通过则继续下一步。未通过则继续修改 =patch= 进行测试。
+
+6. 推送更改到上游
+
+   1. 到 [[https://gitlab.deepin.io/debian-patch][debian patch]] 上创建项目
+   2. 添加新建的项目作为本地项目的 =remote origin=
+   3. 推送到上游 =git push -u origin master=
+
+7. 标记项目为已解决
+
+8. 仓库打包并测试
+
+   内网仓库打包并通知测试人员更新测试，若通过后则标记为测试通过，并推送到外网。未通过的则继续修改 =patch= 进行测试。
+
+--------
+
+以上为一个新项目的 =bug= 处理流程，若 [[https://gitlab.deepin.io/debian-patch][debian patch]] 上已经存在，则执行 =git clone <repository>= 从上面的第 =4= 步开始。
+
+安全漏洞的 =bug= 修复后推送到 =backport= 的 =ppa= 中， =ppa= 需要分内外网，在 =bug= 处于特定状态后触发打包。
+
+
+** 状态追踪
+
+为了方便记录漏洞的状态，编写了 [[https://github.com/deepin-cve/tracker][deepin cve tracker]] 工具进行管理，使用方法见项目中的 =README.org= 。
+
+后期计划提供 =web= 页面进行管理。
+
+
+** 主仓库更新
+
+若 =backport= 中的 =package= 在主仓库中有了更新，则按以下流程处理：
+
+1. 检查新版本中对应的漏洞是否存在，若存在则进行下一步
+2. 在新版本上修改并应用 =patch= ，若 =patch= 无法应用则标记为无 =patch= 延后处理
+3. 测试漏洞是否修复，修复则下一步，未修复则继续查找 =patch=
+4. 更新 [[https://gitlab.deepin.io/debian-patch][debian patch]] 上的项目
+
+
+** 漏洞处理顺序
+
+先按严重级别(高级，中级，低级等)依次处理，每种级别又按以下顺序处理：
+
+1. 已有 =patch= 的漏洞
+2. 无 =patch= 但可重现的漏洞
+3. 无 =patch= 也不可重现的漏洞(主要是查找漏洞的重现方式)
