@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-
 	"fmt"
+	"time"
 
 	"github.com/deepin-cve/tracker/internal/config"
 	"github.com/deepin-cve/tracker/pkg/db"
@@ -20,6 +20,16 @@ func main() {
 
 	var c = config.GetConfig(*conf)
 	db.Init(c.DBDir)
+
+	go func() {
+		for {
+			time.Sleep(time.Hour * 10)
+			err := db.SessionClean()
+			if err != nil {
+				fmt.Println("Failed to clean session:", err)
+			}
+		}
+	}()
 
 	err := v0.Route(fmt.Sprintf("%s:%d", c.Server.Host, c.Server.Port),
 		*debug)

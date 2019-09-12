@@ -42,19 +42,23 @@ func (s *Session) Delete() error {
 
 // SessionClean clean expired session
 func SessionClean() error {
-	var offset int64
-	var limit int64 = 100
-	var count int64
-	var sessions []*Session
-	for offset < count {
-		err := CommonDB.Count(&count).Offset(offset).Limit(limit).Find(&sessions).Error
+	var offset = 0
+	var limit = 100
+	var length = 100
+	for length == limit {
+		var sessions []*Session
+		err := CommonDB.Offset(offset).Limit(limit).Find(&sessions).Error
 		if err != nil {
 			return err
 		}
 		for _, session := range sessions {
+			if !session.Expired() {
+				continue
+			}
 			CommonDB.Where("`token` = ?", session.Token).Delete(&Session{})
 		}
-		offset += int64(len(sessions))
+		length = len(sessions)
+		offset += len(sessions)
 	}
 	return nil
 }
