@@ -227,7 +227,7 @@ curl -H 'Access-Token:<token>' <host>/v0/tools/package/v20 -F 'packages=@./packa
 
 * PATCH
 
-详细的流程参见： **[[./docs/security-updates.org][安全更新流程]]** 。
+详细的流程参见： [[./docs/security-updates.org][安全更新流程]] 。
 
 对 =bug= 打 =patch= 时请按照以下步骤操作：
 
