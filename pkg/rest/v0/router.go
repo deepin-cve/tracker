@@ -3,6 +3,7 @@ package v0
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/deepin-cve/tracker/internal/config"
 	"github.com/deepin-cve/tracker/pkg/db"
@@ -20,7 +21,7 @@ func Route(addr string, debug bool) error {
 		gin.SetMode(gin.DebugMode)
 	}
 	var eng = gin.Default()
-	v0 := eng.Group("v0")
+	v0 := eng.Group("v0", cors())
 	v0.GET("/logs", queryLogList)
 
 	session := v0.Group("session")
@@ -181,5 +182,39 @@ func insertLog(log *db.Log) {
 	err := log.Create()
 	if err != nil {
 		fmt.Println("Failed to insert log:", err, log.Action.String(), log.Description)
+	}
+}
+
+func cors() gin.HandlerFunc {
+	// TODO(jouyouyun): using gin cors
+	return func(c *gin.Context) {
+		var headerList []string
+		for k := range c.Request.Header {
+			headerList = append(headerList, k)
+		}
+		var header = strings.Join(headerList, ", ")
+		if len(header) != 0 {
+			header = fmt.Sprintf("access-control-allow-origin, access-control-allow-headers, %s",
+				header)
+		} else {
+			header = fmt.Sprintf("access-control-allow-origin, access-control-allow-headers")
+		}
+
+		if len(c.Request.Header.Get("Origin")) != 0 {
+			c.Header("Access-Control-Allow-Origin", "*")
+			c.Header("Access-Control-Allow-Headers", header)
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
+			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Length, X-CSRF-Token, Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, Timestamp, timestamp")
+			c.Header("Access-Control-Allow-Credentials", "true")
+			// expose custom header
+			c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type, X-Current-Page, X-Resource-Total, X-Page-Size, Access-Token")
+			c.Set("Content-type", "application/json; charset=utf-8")
+		}
+
+		if c.Request.Method == http.MethodOptions {
+			c.JSON(http.StatusOK, "Options Request!")
+			return
+		}
+		c.Next()
 	}
 }
