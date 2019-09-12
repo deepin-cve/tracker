@@ -77,26 +77,67 @@ CREATE TABLE IF NOT EXISTS "cves" (
 =status= 的可用值为：
 + =unprocessed= : 还未处理的 =bug= ，默认状态
 + =processing= : 已处理但未完成的 =bug= ，原因可能是没有提交或者提交的改动太大，等待之后继续处理
-+ =finished= : 已添加了 =patch= 的 =bug=
-+ =canceled= : 测试未重现的 =bug=
++ =postpone= : 延后处理，一般不可重现但有 =patch= 或者可重现但无 =patch= 时标记为此状态
++ =hold= : 搁置，一般可重现但无 =patch= 时标记为此状态
++ =canceled= : 尝试各种测试方法均为未重现的 =bug=
++ =fixed= : 已添加了 =patch= 的 =bug=
 
 ** 接口
 
 #+BEGIN_SRC shell
-GET    /v0/cve
-GET    /v0/cve/:id
-PATCH  /v0/cve/:id
-POST   /v0/tools/cve/fetch
-POST   /v0/tools/packages
+GET    /v0/logs
+POST   /v0/session/login
+DELETE /v0/session/logout
+GET    /v0/cves/:version
+GET    /v0/cves/:version/:id
+PATCH  /v0/cves/:version/:id
+POST   /v0/versions
+GET    /v0/versions
+GET    /v0/versions/:version
+PATCH  /v0/versions/:version
+DELETE /v0/versions/:version
+POST   /v0/tools/debian/:version
+POST   /v0/tools/package/:version
 #+END_SRC
 
-其中除了 =GET= 接口不需要 =token= ，其它接口都需要在 =HTTP Header= 中设置 =Access-Token= ， =token= 由服务管理员提供。
+其中除了 =GET= 接口不需要 =token= ，其它接口都需要在 =HTTP Header= 中设置 =Access-Token= ， =token= 通过 =LDAP= 登录后获取。
 
 接口中的 =id= 指 =CVE Bug= 的 =id= ，如： =CVE-2018-14404= ， =PATCH/POST= 请求的数据为 =JSON= 格式，需要在 =HTTP Header= 中设置 =Content-Type:application/json= 。
 
+=version= 为 =deepin= 的版本，如 =15.5sp2= ， =v20= 等。
+
 下面将简单描述每个接口的功能：
 
-*** =GET /v0/cve=
+*** =GET /v0/logs=
+
+获取操作日志，可用的查询参数为： =operator= 和 =target= 。
+
++ =operator= : 用户名
++ =target= : 只可为 =version= 或者 =cve id=
+
+如查询用户 =deepin= 对 =v20= 的操作记录：
+
+#+BEGIN_SRC shell
+curl -X GET  -H 'Content-Type:application/json' <host>/v0/logs?operator=deepin&target=v20
+#+END_SRC
+
+*** =POST /v0/session/login=
+
+登录，需要在 =body= 中传入 =username= 和 =password= ，如：
+
+#+BEGIN_SRC shell
+curl -X POST -H 'Content-Type:application/json' <host>/v0/session/login -d '{"username:"deepin","password":"123456"}'
+#+END_SRC
+
+登录成功后会在响应头中设置 =Access-Token= 。
+
+
+*** =DELETE /v0/session/logout=
+
+注销，需要在头部设置 =Access-Token= 。
+
+
+*** =GET /v0/cves/:version=
 
 获取 =CVE Bug= 列表，默认返回第一页的数据，每页数据的大小为 =15=
 
@@ -114,48 +155,79 @@ POST   /v0/tools/packages
 
 接口返回时会在 =Response Header= 中设置以下值：
 
-+ =X-Resource-Page= : 当前页面
++ =X-Current-Page= : 当前页面
 + =X-Resource-Total= : 当前查询参数下的结果总数
-+ =X-Resource-Count= : 当前每页显示的大小
++ =X-Page-Size= : 当前每页显示的大小
 
 这里给出几个例子：
 
-+ 查询状态为 =finished= 和 =cancelled= 的 =bug=
++ 查询 =v20= 中状态为 =fixed= 和 =cancelled= 的 =bug=
 
-  =curl -X GET -H 'Content-Type:application/json' http://<host>:<port>/v0/cve?status=finished,cancelled=
+  =curl -X GET -H 'Content-Type:application/json' <host>/v0/cves/v20?status=fixed,cancelled=
 
-+ 查询 =urgency= 为 =high_urgency= 和 =medium_urgency= 并且预装的 =bug=
++ 查询 =v20= 中 =urgency= 为 =high_urgency= 和 =medium_urgency= 并且预装的 =bug=
 
-  =curl -X GET -H 'Content-Type:application/json' http://<host>:<port>/v0/cve?pre_installed=true&filters=high_urgency,medium_urgency=
+  =curl -X GET -H 'Content-Type:application/json' <host>/v0/cves/v20?pre_installed=true&filters=high_urgency,medium_urgency=
 
-*** =GET /v0/cve/:id=
+*** =GET /v0/cves/:version/:id=
 
-查询指定 =CVE Bug ID= 的信息
+查询指定 =version= 中 =CVE Bug ID= 的信息
 
-*** =PATCH /v0/cve/:id=
+*** =PATCH /v0/cves/:version/:id=
 
-修改指定 =CVE Bug ID= 的信息
+修改指定 =version= 中 =CVE Bug ID= 的信息
 
-*** =PATCH /v0/tools/cve/fetch=
+*** =POST /v0/versions=
 
-导入 =Debian CVE Tracker= 上的 =bug= ，如导入全部的高级 =bug= ：
+添加新版本，如 =v15.5sp2= ：
+
+#+BEGIN_SRC shell
+curl -X POST -H 'Content-Type:application/json' -H 'Access-Token:<token>' <host>/v0/versions \
+-d '{"version":"v15.5sp2","debian_version":"stretch","tracker_url":"https://security-tracker.debian.org/tracker", "release_tracker":"https://security-tracker.debian.org/tracker/status/release/oldstable", "debian_seq":9}'
+#+END_SRC
+
+*** =GET /v0/versions=
+
+获取列表
+
+*** =GET /v0/versions/:version=
+
+获取指定 =version= 的信息
+
+*** =PATCH /v0/versions/:version=
+
+修改指定 =version= 的信息
+
+
+*** =PATCH /v0/tools/debian/:version=
+
+导入 =Debian CVE Tracker= 上的 =bug= ，如导入 =buster= 中全部的高级 =bug= ：
 
 #+BEGIN_SRC shell
 curl -X POST -H 'Content-Type:application/json' -H 'Access-Token:<token>' \
-http://<host>:<port>/v0/tools/cve/fetch?filters=high_urgency,undetermined_issues,nodsa,noignored,nopostponed=
+<host>/v0/tools/debian/v20?filters=high_urgency,undetermined_issues,nodsa,noignored,nopostponed=
 #+END_SRC
 
-*** =PATCH /v0/tools/packages=
+初始化时应导入全部的 =bug= 。
 
-重新初始化预装的安装包信息，预装的包的路径在配置文件中指定，初始化时需确保文件存在，如要更新就替换此文件，然后调用这个接口。
+*** =PATCH /v0/tools/package/:version=
 
-预装包信息由命令 =dpkg-query -f '${Package},${Architecture},${Version},${Source}\n' -W> packages.list= 生成
+初始化预装的安装包信息，需要上传包列表文件。
 
-=curl -X POST -H 'Content-Type:application/json' -H 'Access-Token:<token>' http://<host>:<port>/v0/tools/packages=
+预装包信息由命令 =dpkg-query -f '${Package},${Architecture},${Version},${Source}\n' -W> packages.list= 生成。
+
+如初始化 =v20= 的预装包数据：
+
+#+BEGIN_SRC shell
+curl -H 'Access-Token:<token>' <host>/v0/tools/package/v20 -F 'packages=@./packages.list'
+#+END_SRC
+
 
 --------
 
 * PATCH
+
+详细的流程参见： **[[./docs/security-updates.org][安全更新流程]]** 。
 
 对 =bug= 打 =patch= 时请按照以下步骤操作：
 
