@@ -89,6 +89,7 @@ func doSetDBHandler(version string) error {
 	}
 	db.AutoMigrate(&CVE{})
 	db.AutoMigrate(&Package{})
+	db.AutoMigrate(&CVEScore{})
 	// TODO(jouyouyun): add to configuration
 	db.DB().SetMaxIdleConns(10)
 	db.DB().SetMaxOpenConns(100)

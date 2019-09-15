@@ -36,6 +36,10 @@ func QueryCVEList(params map[string]interface{}, offset, count int,
 	if err != nil {
 		return nil, 0, err
 	}
+
+	for _, info := range list {
+		handler.Model(info).Related(&info.Score, "ID").First(&info.Score)
+	}
 	return list, total, nil
 }
 

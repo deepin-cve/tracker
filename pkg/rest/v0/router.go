@@ -43,6 +43,7 @@ func Route(addr string, debug bool) error {
 	tools := v0.Group("tools")
 	tools.POST("/debian/:version", checkAccessToken, fetchDebian)
 	tools.POST("/package/:version", checkAccessToken, initPackages)
+	tools.POST("/score/:version", checkAccessToken, fetchScore)
 
 	return eng.Run(addr)
 }

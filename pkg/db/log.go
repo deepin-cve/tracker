@@ -30,6 +30,7 @@ const (
 	LogActionNewVersion
 	LogActionPatchVersion
 	LogActionDeleteVersion
+	LogActionFetchScore
 )
 
 // String action description
@@ -51,6 +52,8 @@ func (action ActionType) String() string {
 		return "Modify version"
 	case LogActionDeleteVersion:
 		return "Delete version"
+	case LogActionFetchScore:
+		return "Fetch score"
 	}
 	return fmt.Sprint(action)
 }

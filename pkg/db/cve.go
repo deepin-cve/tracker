@@ -89,10 +89,10 @@ func (filter FilterScope) String() string {
 
 // DebianCVE store cve bug from debian tracker
 type DebianCVE struct {
-	ID      string `gorm:"primary_key"`
-	Package string
-	Urgency string
-	Remote  string
+	ID      string `gorm:"primary_key" json:"id"`
+	Package string `json:"package"`
+	Urgency string `json:"urgency"`
+	Remote  string `json:"remote"`
 }
 
 // DebianCVEList an array for CVE
@@ -119,15 +119,17 @@ func (info *DebianCVE) FixUrgency() {
 // CVE store cve bug for tracking
 type CVE struct {
 	DebianCVE
-	Status      string
-	Patch       string
-	Description string
+	Status      string `json:"status"`
+	Patch       string `json:"patch"`
+	Description string `json:"description"`
 
-	PreInstalled bool
-	Archived     bool
+	PreInstalled bool `json:"pre_installed"`
+	Archived     bool `json:"archived"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Score CVEScore `gorm:"FOREIGNKEY:ID;ASSOCIATION_FOREIGNKEY:ID" json:"score"`
+
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 	DeletedAt *time.Time `json:"-"`
 }
 
@@ -195,7 +197,7 @@ func NewCVE(id, version string) (*CVE, error) {
 	}
 
 	var cve CVE
-	err := handler.Where("`id` = ?", id).First(&cve).Error
+	err := handler.Preload("Score").Where("`id` = ?", id).First(&cve).Error
 	if err != nil {
 		return nil, err
 	}

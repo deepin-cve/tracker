@@ -6,11 +6,11 @@ import (
 
 // Package store installed packages in ISO Image
 type Package struct {
-	Package       string `gorm:"primary_key"` // package + ':' + architecture, unique key
-	Source        string
-	Version       string
-	Architecture  string
-	SourceVersion string // if empty, equal with version
+	Package       string `gorm:"primary_key" json:"package"` // package + ':' + architecture, unique key
+	Source        string `json:"source"`
+	Version       string `json:"version"`
+	Architecture  string `json"architecture`
+	SourceVersion string `json:"source_version"` // if empty, equal with version
 }
 
 // PackageList package list
