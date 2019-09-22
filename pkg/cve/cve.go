@@ -23,11 +23,14 @@ func QueryCVEList(params map[string]interface{}, offset, count int,
 		sort, ok := value.(string)
 		if ok && len(sort) != 0 {
 			var order string
-			if sort == "updated_at" {
+			if sort == "updated_at" || sort == "score" {
 				order = " desc"
 			}
 			sql = sql.Order(fmt.Sprintf("%s%s", sort, order))
 		}
+	} else {
+		// default
+		sql = sql.Order("updated_at desc")
 	}
 
 	var list db.CVEList
@@ -37,9 +40,6 @@ func QueryCVEList(params map[string]interface{}, offset, count int,
 		return nil, 0, err
 	}
 
-	for _, info := range list {
-		handler.Model(info).Related(&info.Score, "ID").First(&info.Score)
-	}
 	return list, total, nil
 }
 

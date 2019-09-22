@@ -7,6 +7,7 @@ type CVEScore struct {
 	ID            string `gorm:"primary_key;index" json:"id"`
 	ScoreSeverity string `json:"score_severity"`
 	Vector        string `json:"vector"`
+	CVSS          string `json:"cvss"`
 
 	Score               float64 `json:"score"`
 	ImpactScore         float64 `json:"impact_score"`
@@ -33,6 +34,33 @@ func (list CVEScoreList) Create(version string) error {
 		}
 
 		err := tx.Create(score).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit().Error
+}
+
+func (list CVEScoreList) UpdateCVE(version string) error {
+	handler := GetDBHandler(version)
+	if handler == nil {
+		return fmt.Errorf("Not found db hander for version '%s'", version)
+	}
+
+	var tx = handler.Begin()
+	for _, score := range list {
+		var info CVE
+		tx.Where("`id` = ?", score.ID).First(&info)
+		if info.Score == score.Score {
+			// exists
+			continue
+		}
+
+		err := tx.Model(&CVE{}).Where("`id` = ?", score.ID).Updates(map[string]interface{}{
+			"cvss":  score.CVSS,
+			"score": score.Score,
+		}).Error
 		if err != nil {
 			tx.Rollback()
 			return err

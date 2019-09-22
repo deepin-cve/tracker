@@ -35,7 +35,15 @@ func FetchScore(url string) (*db.CVEScore, error) {
 		return nil, err
 	}
 
-	var score = db.CVEScore{ID: filepath.Base(url)}
+	score, err := getScoreFromCVSS3(dom, filepath.Base(url))
+	if err == nil {
+		return score, nil
+	}
+	return getScoreFromCVSS2(dom, filepath.Base(url))
+}
+
+func getScoreFromCVSS3(dom *goquery.Document, id string) (*db.CVEScore, error) {
+	var score = db.CVEScore{ID: id, CVSS: "3.0"}
 	v, err := getElementText(dom, "span[data-testid=vuln-cvssv3-base-score]")
 	if err != nil {
 		return nil, err
@@ -66,7 +74,41 @@ func FetchScore(url string) (*db.CVEScore, error) {
 		return nil, err
 	}
 	score.ExploitabilityScore = strToFloat64(v)
+	return &score, nil
+}
 
+func getScoreFromCVSS2(dom *goquery.Document, id string) (*db.CVEScore, error) {
+	var score = db.CVEScore{ID: id, CVSS: "2.0"}
+	v, err := getElementText(dom, "span[data-testid=vuln-cvssv2-base-score]")
+	if err != nil {
+		return nil, err
+	}
+	score.Score = strToFloat64(v)
+
+	v, err = getElementText(dom, "span[data-testid=vuln-cvssv2-base-score-severity]")
+	if err != nil {
+		return nil, err
+	}
+	score.ScoreSeverity = v
+
+	v, err = getElementText(dom, "span[data-testid=vuln-cvssv2-vector]")
+	if err != nil {
+		return nil, err
+	}
+	list := strings.Split(v, "\n")
+	score.Vector = strings.TrimSpace(list[0])
+
+	v, err = getElementText(dom, "span[data-testid=vuln-cvssv2-impact-score]")
+	if err != nil {
+		return nil, err
+	}
+	score.ImpactScore = strToFloat64(v)
+
+	v, err = getElementText(dom, "span[data-testid=vuln-cvssv2-exploitability-score]")
+	if err != nil {
+		return nil, err
+	}
+	score.ExploitabilityScore = strToFloat64(v)
 	return &score, nil
 }
 

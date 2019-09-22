@@ -89,7 +89,7 @@ func (filter FilterScope) String() string {
 
 // DebianCVE store cve bug from debian tracker
 type DebianCVE struct {
-	ID      string `gorm:"primary_key" json:"id"`
+	ID      string `gorm:"primary_key" json:"id"` // jump to cve
 	Package string `json:"package"`
 	Urgency string `json:"urgency"`
 	Remote  string `json:"remote"`
@@ -122,11 +122,12 @@ type CVE struct {
 	Status      string `json:"status"`
 	Patch       string `json:"patch"`
 	Description string `json:"description"`
+	CVSS        string `json:"cvss"`
 
 	PreInstalled bool `json:"pre_installed"`
 	Archived     bool `json:"archived"`
 
-	Score CVEScore `gorm:"FOREIGNKEY:ID;ASSOCIATION_FOREIGNKEY:ID" json:"score"`
+	Score float64 `json:"score"` // jump to nvd
 
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
@@ -197,7 +198,7 @@ func NewCVE(id, version string) (*CVE, error) {
 	}
 
 	var cve CVE
-	err := handler.Preload("Score").Where("`id` = ?", id).First(&cve).Error
+	err := handler.Where("`id` = ?", id).First(&cve).Error
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +228,7 @@ func ValidStatus(status string) bool {
 func ValidColumn(name string) bool {
 	switch name {
 	case "id", "package", "urgency", "remote", "status", "patch", "description",
-		"pre_installed", "archived", "created_at", "updated_at":
+		"pre_installed", "archived", "cvss", "score", "created_at", "updated_at":
 		return true
 	}
 	return false

@@ -74,9 +74,9 @@ func fetchDebian(c *gin.Context) {
 			list = append(list, &cve)
 
 			if len(scoreList) == 100 {
-				err := scoreList.Create(version)
+				err := scoreList.UpdateCVE(version)
 				if err != nil {
-					fmt.Println("Failed to create cve score list")
+					fmt.Println("Failed to update cve score list")
 					return
 				}
 				scoreList = db.CVEScoreList{}
@@ -91,6 +91,13 @@ func fetchDebian(c *gin.Context) {
 			err := list.Create(version)
 			if err != nil {
 				fmt.Println("Failed to create cve:", err)
+				return
+			}
+		}
+		if len(scoreList) != 0 {
+			err := scoreList.UpdateCVE(version)
+			if err != nil {
+				fmt.Println("Failed to update cve score list")
 				return
 			}
 		}
@@ -187,9 +194,9 @@ func fetchScore(c *gin.Context) {
 		)
 		for length == limit {
 			if len(scoreList) >= 100 {
-				err := scoreList.Create(v)
+				err := scoreList.UpdateCVE(v)
 				if err != nil {
-					fmt.Println("Failed to insert cve score:", err)
+					fmt.Println("Failed to update cve score:", err)
 					return
 				}
 				scoreList = db.CVEScoreList{}
@@ -217,9 +224,9 @@ func fetchScore(c *gin.Context) {
 		if len(scoreList) == 0 {
 			return
 		}
-		err := scoreList.Create(v)
+		err := scoreList.UpdateCVE(v)
 		if err != nil {
-			fmt.Println("Failed to insert cve score:", err)
+			fmt.Println("Failed to update cve score:", err)
 			return
 		}
 		fmt.Println("[Debug] fetch cve score done")
