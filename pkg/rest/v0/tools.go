@@ -208,9 +208,7 @@ func fetchScore(c *gin.Context) {
 			offset += length
 
 			for _, info := range cveList {
-				var tmp = db.CVEScore{ID: info.ID}
-				err := tmp.Get(v)
-				if err == nil {
+				if info.Score > 0 {
 					continue
 				}
 				score, err := fecthNVDScore(info.ID)
@@ -222,6 +220,7 @@ func fetchScore(c *gin.Context) {
 		}
 
 		if len(scoreList) == 0 {
+			fmt.Println("[Debug] fetch cve score done")
 			return
 		}
 		err := scoreList.UpdateCVE(v)

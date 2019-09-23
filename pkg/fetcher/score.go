@@ -98,7 +98,7 @@ func getScoreFromCVSS2(dom *goquery.Document, id string) (*db.CVEScore, error) {
 	list := strings.Split(v, "\n")
 	score.Vector = strings.TrimSpace(list[0])
 
-	v, err = getElementText(dom, "span[data-testid=vuln-cvssv2-impact-score]")
+	v, err = getElementText(dom, "span[data-testid=vuln-cvssv2-impact-subscore]")
 	if err != nil {
 		return nil, err
 	}
