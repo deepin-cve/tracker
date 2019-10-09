@@ -41,6 +41,7 @@ func createVersion(c *gin.Context) {
 		Action:      db.LogActionNewVersion,
 		Target:      verInfo.Version,
 		Description: db.LogActionNewVersion.String() + ": " + verInfo.Version,
+		Content:     toString(&verInfo),
 	})
 	c.JSON(http.StatusOK, &verInfo)
 }
@@ -115,6 +116,7 @@ func patchVersion(c *gin.Context) {
 		Action:      db.LogActionPatchVersion,
 		Target:      info.Version,
 		Description: db.LogActionPatchVersion.String() + ": " + info.Version,
+		Content:     toString(&info),
 	})
 	c.JSON(http.StatusOK, &info)
 }
@@ -154,6 +156,7 @@ func deleteVersion(c *gin.Context) {
 		Action:      db.LogActionDeleteVersion,
 		Target:      info.Version,
 		Description: db.LogActionDeleteVersion.String() + ": " + info.Version,
+		Content:     toString(&info),
 	})
 	c.JSON(http.StatusOK, &info)
 }

@@ -154,6 +154,7 @@ func patchCVE(c *gin.Context) {
 		Action:      db.LogActionPatchCVE,
 		Target:      id,
 		Description: db.LogActionPatchCVE.String() + ": " + id,
+		Content:     toString(&values),
 	})
 
 	c.JSON(http.StatusOK, info)

@@ -16,6 +16,7 @@ type Log struct {
 	ActionDesc  string     `gorm:"-" json:"action_desc"`
 	Target      string     `json:"target"`
 	Description string     `json:"description"`
+	Content     string     `json:"content"`
 }
 
 // LogList log list
@@ -32,6 +33,12 @@ const (
 	LogActionDeleteVersion
 	LogActionFetchScore
 )
+
+// ValidAction validity action
+func ValidAction(action int) bool {
+	a := ActionType(action)
+	return a >= LogActionInitPackage && a <= LogActionFetchScore
+}
 
 // String action description
 func (action ActionType) String() string {
@@ -82,9 +89,7 @@ func (l *Log) Create() error {
 }
 
 // QueryLogList query log list, available params: operator, target
-func QueryLogList(params map[string]string) (LogList, error) {
-	// TODO(jouyouyun): add offset, limit
-
+func QueryLogList(params map[string]interface{}, offset, limit int) (int64, LogList, error) {
 	var sql = CommonDB.Model(&Log{})
 	if v, ok := params["operator"]; ok {
 		sql = sql.Where("`operator` = ?", v)
@@ -92,14 +97,18 @@ func QueryLogList(params map[string]string) (LogList, error) {
 	if v, ok := params["target"]; ok {
 		sql = sql.Where("`target` = ?", v)
 	}
+	if v, ok := params["action"]; ok {
+		sql = sql.Where("`action` = ?", v)
+	}
 
 	var list LogList
-	err := sql.Find(&list).Error
+	var total int64
+	err := sql.Count(&total).Offset(offset).Limit(limit).Find(&list).Error
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	list.fix()
 	sort.Sort(list)
-	return list, nil
+	return total, list, nil
 }

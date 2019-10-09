@@ -108,6 +108,7 @@ func fetchDebian(c *gin.Context) {
 		Operator:    c.GetString("username"),
 		Action:      db.LogActionFecthDebian,
 		Description: strings.Join(body.Filters, ","),
+		Content:     toString(&body),
 	})
 
 	c.String(http.StatusAccepted, "")
@@ -159,6 +160,7 @@ func initPackages(c *gin.Context) {
 		Operator:    c.GetString("username"),
 		Action:      db.LogActionInitPackage,
 		Description: db.LogActionInitPackage.String(),
+		Content:     "init package version: " + version + ", file: " + uploadFile,
 	})
 
 	c.String(http.StatusAccepted, "")
@@ -235,6 +237,7 @@ func fetchScore(c *gin.Context) {
 		Operator:    c.GetString("username"),
 		Action:      db.LogActionFetchScore,
 		Description: db.LogActionFetchScore.String(),
+		Content:     "fetch score version: " + version,
 	})
 
 	c.String(http.StatusAccepted, "")

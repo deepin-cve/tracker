@@ -3,7 +3,10 @@ package v0
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"encoding/json"
 
 	"github.com/deepin-cve/tracker/internal/config"
 	"github.com/deepin-cve/tracker/pkg/db"
@@ -117,6 +120,7 @@ func login(c *gin.Context) {
 		Action:      db.LogActionLogin,
 		Target:      data.Username,
 		Description: db.LogActionLogin.String(),
+		Content:     tk.Username + " login",
 	})
 
 	c.Header("Access-Token", tk.Token)
@@ -154,21 +158,33 @@ func logout(c *gin.Context) {
 		Action:      db.LogActionLogout,
 		Target:      tk.Username,
 		Description: db.LogActionLogout.String(),
+		Content:     tk.Username + " logout",
 	})
 
 	c.String(http.StatusOK, "")
 }
 
 func queryLogList(c *gin.Context) {
-	var params = make(map[string]string)
+	var params = make(map[string]interface{})
 	if operator := c.Query("operator"); len(operator) != 0 {
 		params["operator"] = operator
 	}
 	if target := c.Query("target"); len(target) != 0 {
 		params["target"] = target
 	}
+	if str := c.Query("action"); len(str) != 0 {
+		action, _ := strconv.Atoi(str)
+		if db.ValidAction(action) {
+			params["action"] = action
+		}
+	}
 
-	list, err := db.QueryLogList(params)
+	pageStr := c.DefaultQuery("page", "1")
+	page, _ := strconv.Atoi(pageStr)
+	countStr := c.DefaultQuery("count", fmt.Sprint(defaultPageCount))
+	count, _ := strconv.Atoi(countStr)
+
+	total, list, err := db.QueryLogList(params, (page-1)*count, count)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -176,6 +192,9 @@ func queryLogList(c *gin.Context) {
 		return
 	}
 
+	c.Header("X-Current-Page", fmt.Sprint(page))
+	c.Header("X-Resource-Total", fmt.Sprint(total))
+	c.Header("X-Page-Size", fmt.Sprint(count))
 	c.JSON(http.StatusOK, &list)
 }
 
@@ -218,4 +237,9 @@ func cors() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func toString(v interface{}) string {
+	data, _ := json.Marshal(v)
+	return string(data)
 }
