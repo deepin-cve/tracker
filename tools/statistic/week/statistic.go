@@ -76,7 +76,7 @@ func main() {
 	fmt.Printf("+ 已取消的\n\n")
 	fmt.Println("| Package | CVE | Patch | Description |")
 	fmt.Println("|---------+-----+-------+-------------|")
-	err = exportCVEList("cancel")
+	err = exportCVEList("canceled")
 	if err != nil {
 		fmt.Println("Failed to export cancel:", err)
 		return
