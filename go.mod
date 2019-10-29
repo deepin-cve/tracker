@@ -8,3 +8,5 @@ require (
 	gopkg.in/ldap.v3 v3.0.3
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+go 1.13
