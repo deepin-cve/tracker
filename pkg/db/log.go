@@ -100,6 +100,7 @@ func QueryLogList(params map[string]interface{}, offset, limit int) (int64, LogL
 	if v, ok := params["action"]; ok {
 		sql = sql.Where("`action` = ?", v)
 	}
+	sql = sql.Order("id desc")
 
 	var list LogList
 	var total int64
