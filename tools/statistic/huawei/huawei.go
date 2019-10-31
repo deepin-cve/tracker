@@ -134,7 +134,7 @@ func exportCSVFile() error {
 	}
 	defer fw.Close()
 
-	fields := "ID,Package,Version,CVE,CVSS,Score,PreInstalled"
+	fields := "Package,Version,CVE,CVSS,Score,PreInstalled"
 	fields += ",DebianSource,DebianVersion,DebianRelease,DebianStatus"
 	fields += ",DeepinSource,DeepinVersion,DeepinStatus,DeepinPatch,DeepinDescription"
 	_, err = fw.WriteString(fields + "\n")
@@ -144,8 +144,12 @@ func exportCSVFile() error {
 	}
 
 	whereList := []string{
-		fmt.Sprintf("`pre_installed` = 1"),
-		fmt.Sprintf("`pre_installed` = 0"),
+		fmt.Sprintf("`pre_installed` = 1 AND `score` >= 8"),
+		fmt.Sprintf("`pre_installed` = 1 AND `score` < 8 AND `score` >= 7"),
+		fmt.Sprintf("`pre_installed` = 1 AND `score` < 7"),
+		fmt.Sprintf("`pre_installed` = 0 AND `score` >= 8"),
+		fmt.Sprintf("`pre_installed` = 0 AND `score` < 8 AND `score` >= 7"),
+		fmt.Sprintf("`pre_installed` = 0 AND `score` < 7"),
 	}
 	for _, where := range whereList {
 		err = doExportCSVFile(fw, where)
@@ -170,8 +174,8 @@ func doExportCSVFile(fw *os.File, where string) error {
 			return err
 		}
 		for _, info := range infos {
-			_, _ = fw.WriteString(fmt.Sprintf("%d,%s,%s,%s,%s,%v,%v,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-				info.ID, info.Package, info.Version, info.CVE, info.CVSS, info.Score,
+			_, _ = fw.WriteString(fmt.Sprintf("%s,%s,%s,%s,%v,%v,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+				info.Package, info.Version, info.CVE, info.CVSS, info.Score,
 				info.PreInstalled, info.DebianSource, info.DebianVersion,
 				info.DebianRelease, info.DebianStatus, info.DeepinSource,
 				info.DeepinVersion, info.DeepinStatus, info.DeepinPatch,
