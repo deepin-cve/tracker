@@ -1,0 +1,45 @@
+#+OPTIONS: toc:nil num:nil date:nil timestamp:nil ^:{} <:{}
+#+TITLE: 更改 CVE 状态
+
+[[https://github.com/deepin-cve/tracker][deepin-cve-tracker]] 服务部署在 =http://10.0.10.67:10808= 上，下面演示更改 =v15.5sp2= 上 =CVE-2016-2148= 的状态。
+(目前主要修复 =v15.5sp2= 上的 =bug= ，可用状态见项目文档。)
+
+1. 获取 =Access-Token=
+
+   使用 =LDAP= 账户登录，获取 =Access-Token= ，有效期为 =10 hour= ，失效后重新登录获取，如获取用户名为 =deepin= 密码为 =deepin123= 的命令：
+
+   #+BEGIN_SRC shell
+   $ curl -v -X POST http://10.0.10.67:10808/v0/session/login  -H 'Content-Type:application/json' -d '{"username":"deepin","password":"deepin123"}'
+   Note: Unnecessary use of -X or --request, POST is already inferred.
+   * Expire in 0 ms for 6 (transfer 0x5591da4f2dd0)
+   *   Trying 10.0.10.67...
+   * TCP_NODELAY set
+   * Expire in 200 ms for 4 (transfer 0x5591da4f2dd0)
+   * Connected to 10.0.10.67 (10.0.10.67) port 10808 (#0)
+   > POST /v0/session/login HTTP/1.1
+   > Host: 10.0.10.67:10808
+   > User-Agent: curl/7.64.0
+   > Accept: */*
+   > Content-Type:application/json
+   > Content-Length: 47
+   >
+   * upload completely sent off: 47 out of 47 bytes
+   < HTTP/1.1 200 OK
+   < Access-Token: ZM6fPiJm4FuUZbHbuGAi1UCpV9ljylYw
+   < Content-Type: text/plain; charset=utf-8
+   < Date: Tue, 17 Sep 2019 02:59:06 GMT
+   < Content-Length: 0
+   <
+   * Connection #0 to host 10.0.10.67 left intact
+   #+END_SRC
+
+   从输出中可知 =Access-Token= 为 =ZM6fPiJm4FuUZbHbuGAi1UCpV9ljylYw=
+
+2. 修改状态
+
+   #+BEGIN_SRC shell
+   $ curl -X PATCH -H 'Content-Type:application/json' -H 'Access-Token:ZM6fPiJm4FuUZbHbuGAi1UCpV9ljylYw' http://10.0.10.67:10808/v0/cves/v15.5sp2/CVE-2016-2148 -d '{"status":"fixed","description":"Has exists","patch": "deepin-CVE-2016-2148"}'
+   {"id":"CVE-2016-2148","package":"busybox","urgency":"high_urgency","remote":"yes","status":"fixed","patch":"deepin-CVE-2016-2148","description":"Has exists","pre_installed":true,"archived":false,"score":{"id":"","score_severity":"","vector":"","score":0,"impact_score":0,"exploitability_score":0},"created_at":"2019-09-12T06:10:20.271688349Z","updated_at":"2019-09-17T03:01:58.119549336Z"}
+   #+END_SRC
+
+   其中 =patch= 字段，若是项目中已存在，就写存在的文件名；如是自己提交的，接写提交的 =commit= 链接。

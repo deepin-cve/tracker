@@ -1,0 +1,412 @@
+#+OPTIONS: toc:nil timestamp:nil ^:{} <:{}
+#+TITLE: 如何 Patch 漏洞？
+
+* 预备知识
+
+在介绍漏洞 =patch= 的方法之前，先来了解下以下概念：
+
+
+** Debian Patches
+
+=debian= 对于 =patch= 有一套规则，即需要把 =patch= 文件放到 =debian/patches= 目录下，然后把 =patch= 的文件名添加到 =debian/patches/series= 文件中。
+
+一般的软件都使用上面的规则，但也有一些软件的 =patch= 不是使用上面的规则，而是在 =debian/rules= 写明了 =patch= 的应用方法，此时就应按照里面指定的方法添加 =patch= 信息。
+所以在添加 =patch= 之前需要先弄清 =patch= 的对应规则，然后在按照规则添加。
+
+每个 =patch= 文件都应包含以下信息：
+
+#+BEGIN_SRC patch
+From: the author for this patch
+Subject: the patch summary
+Origin: the upstream commit or the patch source
+
+Some descriptions
+
+Bug: the bug in this project
+Bug-Debian: the bug in debian
+Last-Update: 2019-08-12
+---
+
+diff info
+#+END_SRC
+
+--------
+
+*** 漏洞 Patch
+
+漏洞修复的 =patch= 也是遵循上面的规则，但对 =patch= 文件的命名有要求，格式如下：
+
+#+BEGIN_SRC shell
+deepin-<CVE ID>.patch
+#+END_SRC
+
+如 =CVE ID= 为 =CVE-2017-7574= 则 =patch= 文件名应该是 =deepin-CVE-2017-7574.patch= 。
+
+*** 参考资料
+
+这里只给出了 =patch= 相关的资料，想要了解更多的资料，请自行阅读 =debian= 打包相关的资料。
+
++ [[https://wiki.debian.org/debian/patches][debian patches]]
++ [[https://dep-team.pages.debian.net/deps/dep3/][Patch Tagging Guidelines]]
+
+--------
+
+** Git
+
+=git= 是一个版本控制系统，要求对分支、暂存、提交等概念有着清晰的理解，熟悉 =git= 的基本操作，如分支控制、暂存管理、提交代码等。
+
+使用 =sudo apt-get install git= 安装， 使用 =man git= 查看帮助文档。
+
+安装后执行下面的命令设置一下个人信息：
+
+#+BEGIN_SRC shell
+git config --global user.name "xxx"
+git config --global user.email xxx@deepin.com
+#+END_SRC
+
+*** 参考资料
+
++ [[https://backlog.com/git-tutorial/cn/][猴子都能懂的GIT入门]]
++ [[https://learngitbranching.js.org][learn git branching]]
++ [[https://git-scm.com/book/zh/v2][git 教程]]
+
+--------
+
+** Quilt
+
+=quilt= 是 =debian= 下的 =patch= 管理工具， =patch= 文件的添加应该都用这个工具来添加。
+
+使用 =sudo apt-get install quilt= 安装，安装后执行 =man quilt= 查看帮助文档， **在使用之前必须阅读一遍** 。
+
+
+*** 参考资料
+
++ [[https://www.cnblogs.com/sammei/p/3991805.html][quilt - 制作patch的工具]]
++ [[http://wen00072.github.io/blog/2014/06/08/study-on-the-quilt/][Quilt初探 - 使用quilt產生和管理patch]]
++ [[https://wiki.debian.org/UsingQuilt][UsingQuilt]]
+
+--------
+
+** Debian Package Build
+
+这里只介绍添加 =patch= 需要用到的命令，如下：
+
++ =dpkg-source -b ./=
+
+  应用源码中已经存在的 =patches=
+
++ =dpkg-buildpackage -us -uc -nc=
+
+  在源码目录中执行，执行后开始编译生成 =deb= 安装包
+
+
+
+*** 参考资料
+
++ [[https://shimo.im/docs/Ac9wbmxavDQyx7w7/read][打包参考及debian管理员手册]]
++ [[https://www.debian.org/doc/manuals/maint-guide/][Debian 新维护者手册]]
++ [[https://www.debian.org/doc/manuals/debmake-doc/][Debian 维护者指南]]
+
+
+--------
+
+** APT-GET
+
+=apt-get= 是 =debian= 下的软件包管理工具，使用 =man apt-get= 查看详细文档，这里只介绍会用到的几个命令：
+
++ =sudo apt-get install <package>=
+
+  安装软件
+
++ =sudo apt-get build-dep <package>=
+
+  安装编译依赖
+
++ =apt-get source <package>=
+
+  下载源码
+
+--------
+
+* 添加 Patch
+
+这里以一个具体的例子来描述这个过程，如处理 =CVE-2018-20030= 步骤如下：
+
+首先需要知道一些基本信息，如下：
+
++ 要修复的版本
+
+  =deepin 15.5sp2= 即 =debian stretch=
+
++ =patch= 仓库
+
+  所有修复的 =patch= 都需要添加到仓库 [[https://gitlab.deepin.io/debian-patch/debian-security][debian-security]]
+
+--------
+
+** 查看 =bug= 信息
+
+进入 =https://security-tracker.debian.org/tracker/= 加 =CVE-2018-20030= 即 [[https://security-tracker.debian.org/tracker/CVE-2018-20030][CVE-2018-20030]] 去查看 =bug= 的详细信息。
+
+可看到 =stretch= 上对应的信息是 =libexif	0.6.21-2	vulnerable= ，这就表示漏洞在存在，状态为 =fixed= 时表示已修复。
+
+--------
+
+** 下载源码
+
+创建 =libexif= 目录，然后执行如下命令
+
+#+BEGIN_SRC shell
+sudo apt-get build-dep libexif
+apt-get source libexif
+#+END_SRC
+
+此时会得到以下文件:
+
+#+BEGIN_SRC shell
+libexif-0.6.21/  libexif_0.6.21-5.1.debian.tar.xz  libexif_0.6.21-5.1.dsc  libexif_0.6.21.orig.tar.gz
+#+END_SRC
+
+--------
+
+** 设置源码环境
+
+到仓库 [[https://gitlab.deepin.io/debian-patch/debian-security][debian-security]] 上克隆 =libexif= ，此时会出现以下两种情况：
+
+*** 项目不存在
+
+这时就在页面上创建这个项目，设置为公开项目，然后继续按第二种情况的方法处理
+
+*** 项目存在
+
+执行命令： =git clone https://gitlab.deepin.io/debian-patch/debian-security/libexif.git= 克隆项目，完成后会多出一个目录 =libexif=
+
+这时也会出现两种情况，如下：
+
++ 项目不为空
+
+   这就表明项目已经初始化过，执行以下命令设置源码环境
+
+   #+BEGIN_SRC shell
+   rm -rf libexif-0.6.21
+   mv libexif libexif-0.6.21
+   #+END_SRC
+
++ 项目为空
+
+   这时就先以 =libexif= 的版本为名创建一个分支，如： =git checkout -b 0.6.21= ，版本号不包含 =-= 及其后的字符。
+
+   接着添加干净的源码到 =0.6.21= 分支中，命令如下：
+
+   #+BEGIN_SRC shell
+   cd libexif-0.6.21
+   quilt pop -af # 清理应用的 patches，这需要根据 patch 的规则选择命令
+   rm -rf .pc
+   ./debian/rules clean # 清理编译残留文件，如果出错，请按照错误信息处理
+   mv * ../libexif/
+   ls -a # 检查下有无隐藏文件未复制到 libexif 目录，有就使用 cp 负责过去
+   cd ../libexif # 进入仓库目录
+   git add .
+   git commit -m "Init" # 初始化仓库
+   #+END_SRC
+
+--------
+
+** 添加 =patch=
+
+*** 应用之前的 =patches=
+
+添加 =patch= 需要在之前的 =patch= 的基础上进行添加，避免两个 =patch= 之间冲突，所以要先应用之前的 =patches= ，命令如下：
+
+#+BEGIN_SRC shell
+git checkout -b patched # 创建出一个新的分支来添加 patch
+dpkg-source -b ./ # 应用之前的 patch
+git add .
+git commit -m "apply patches"
+#+END_SRC
+
+--------
+
+*** 使用 =quilt= 添加 =patch=
+
++ 添加 =patch= 文件
+
+   =quilt new debian/patches/deepin-CVE-2018-20030.patch=
+
++ 添加要修改的源码文件
+
+   打开 =bug= 信息页面给的 =patch= 链接，然后将需要改变的文件加入 =patch= ，如下：
+
+   #+BEGIN_SRC shell
+   quilt add NEWS
+   quilt add libexif/exif-data.c
+   #+END_SRC
+
++ 修改源码文件
+
+   根据 =bug= 的修复链接，将修改添加到对应的文件
+
+   #+BEGIN_SRC shell
+   quilt edit NEWS
+   quilt edit libexif/exif-data.c
+   #+END_SRC
+
++ 更新 =patch= 文件
+
+   执行 =quilt refresh= 将源码改动写入 =patch= 文件，此时执行 =git status= 可看到改动如下：
+
+   #+BEGIN_SRC shell
+   $ git status
+   位于分支 patched
+   尚未暂存以备提交的变更：
+     （使用 "git add <文件>..." 更新要提交的内容）
+     （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+           修改：     .pc/applied-patches
+           修改：     debian/patches/series
+           修改：     libexif/exif-data.c
+
+   未跟踪的文件:
+     （使用 "git add <文件>..." 以包含要提交的内容）
+
+           .pc/deepin-CVE-2018-20030.patch/
+           debian/patches/deepin-CVE-2018-20030.patch
+
+   修改尚未加入提交（使用 "git add" 和/或 "git commit -a"）
+   #+END_SRC
+
+   然后添加 =patch= 头部信息，如 =patch= 来源、作者等信息。
+
+--------
+
+** 编译打包
+
+编译之前现将改变暂存，执行 =git add .= ，好方便继续修改，然后开始编译打包，来验证修改有无问题，整个过程如下：
+
+#+BEGIN_SRC shell
+git add .
+dpkg-buildpackage -us -uc -nc
+#+END_SRC
+
+若打包失败，则表示修改存在问题，就继续修改；若成功则安装生成的软件包(只安装系统上存在的包)，如下：
+
+#+BEGIN_SRC shell
+dpkg -l|grep libexif # 查看已安装的 libexif 包
+sudo dpkg -i ../libexif-0.6.21-2+b2.deb # 安装 deb 包
+#+END_SRC
+
+然后重启测试系统是否正常。
+
+--------
+
+** 提交
+
+*** 先提交 =patched= 分支上的修改，如下：
+
+#+BEGIN_SRC shell
+git checkout . # 清理打包生成的文件
+git clean -xdf
+git commit -m "CVE: fixed 2018-20030"
+#+END_SRC
+
+*** 复制 =patch= 文件到 =0.6.21= 分支
+
+#+BEGIN_SRC shell
+cp debian/patches/deepin-CVE-2018-20030.patch /tmp
+git checkout 0.6.21
+cp /tmp/deepin-CVE-2018-20030.patch debian/patched/
+vim debian/patches/series # 编辑此文件，将 deepin-CVE-2018-20030.patch 添加到文件里
+#+END_SRC
+
+*** 验证
+
+验证 =patch= 能否正常应用，执行：
+
+#+BEGIN_SRC shell
+git add .
+dpkg-source -b ./
+#+END_SRC
+
+若失败，则返回第 =4= 步继续修改 =patch=；成功则清理多余文件并进入下一步：
+
+#+BEGIN_SRC shell
+git checkout .
+git clean -xdf
+#+END_SRC
+
+*** 提交
+
+执行：
+
+#+BEGIN_SRC shell
+git add .
+git commit -m "CVE: fixed 2018-20030"
+git push origin 0.6.21:0.6.21
+#+END_SRC
+
+到此 =patch= 就已经提交完成
+
+--------
+
+** 修改 =bug= 状态
+
+=bug= 状态通过 [[https://github.com/deepin-cve/tracker][deepin-cve-tracker]] 记录，已部署在内网，通过给定的 =HTTP= 接口修改状态。
+
+示例如下：
+
++ 获取 =Access-Token=
+
+   使用 =LDAP= 账户登录，获取 =Access-Token= ，有效期为 =10 hour= ，失效后重新登录获取，如获取用户名为 =deepin= 密码为 =deepin123= 的命令：
+
+   #+BEGIN_SRC shell
+   $ curl -v -X POST http://10.0.10.67:10808/v0/session/login  -H 'Content-Type:application/json' -d '{"username":"deepin","password":"deepin123"}'
+   Note: Unnecessary use of -X or --request, POST is already inferred.
+   * Expire in 0 ms for 6 (transfer 0x5591da4f2dd0)
+   *   Trying 10.0.10.67...
+   * TCP_NODELAY set
+   * Expire in 200 ms for 4 (transfer 0x5591da4f2dd0)
+   * Connected to 10.0.10.67 (10.0.10.67) port 10808 (#0)
+   > POST /v0/session/login HTTP/1.1
+   > Host: 10.0.10.67:10808
+   > User-Agent: curl/7.64.0
+   > Accept: */*
+   > Content-Type:application/json
+   > Content-Length: 47
+   >
+   * upload completely sent off: 47 out of 47 bytes
+   < HTTP/1.1 200 OK
+   < Access-Token: ZM6fPiJm4FuUZbHbuGAi1UCpV9ljylYw
+   < Content-Type: text/plain; charset=utf-8
+   < Date: Tue, 17 Sep 2019 02:59:06 GMT
+   < Content-Length: 0
+   <
+   * Connection #0 to host 10.0.10.67 left intact
+   #+END_SRC
+
+   从输出中可知 =Access-Token= 为 =ZM6fPiJm4FuUZbHbuGAi1UCpV9ljylYw=
+
+--------
+
++ 修改状态
+
+   #+BEGIN_SRC shell
+   $ curl -X PATCH -H 'Content-Type:application/json' -H 'Access-Token:ZM6fPiJm4FuUZbHbuGAi1UCpV9ljylYw' http://10.0.10.67:10808/v0/cves/v15.5sp2/CVE-2016-2148 -d '{"status":"fixed","description":"Has exists","patch": "deepin-CVE-2016-2148"}'
+   {"id":"CVE-2016-2148","package":"busybox","urgency":"high_urgency","remote":"yes","status":"fixed","patch":"deepin-CVE-2016-2148","description":"Has exists by deepin","pre_installed":true,"archived":false,"score":{"id":"","score_severity":"","vector":"","score":0,"impact_score":0,"exploitability_score":0},"created_at":"2019-09-12T06:10:20.271688349Z","updated_at":"2019-09-17T03:01:58.119549336Z"}
+   #+END_SRC
+
+   其中 =patch= 字段，若是项目中已存在，就写存在的文件名；如是自己提交的，接写提交的 =commit= 链接。 =description= 中需要在末尾加上 =by <username>= 已表明修改人。
+
+   目前 =status= 只需修改为 =fixed= 和 =postpone= 两种，未修复的都将状态改为 =postpone= 。
+
+
+--------
+
+* FAQ
+
++ =debian tracker= 网站中没有 =patch= 地址？
+
+   查看页面上面 =ubuntu, suse= 等相关的链接中是否有 =patch=
+
++ =patch= 内容与源码对不上？
+
+   仔细查看 =patch= 的源码与仓库中的源码，仔细对比，查看是否能否 =backport=

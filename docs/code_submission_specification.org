@@ -1,0 +1,248 @@
+#+OPTIONS: toc:nil num:nil timestamp:nil ^:{} <:{}
+#+TITLE: 代码提交规范
+
+目前代码提交有两种情况：
+
++ 源码提交
+
+  在我们自己的项目中会使用这样的方式
+
++ =Patch= 提交
+
+  对上游代码的修改通常使用这种方式
+
+每种方式的提交方法略有不同，下面将详细描述.
+
+** 源码提交规范
+
+使用源码提交时首先需要知道在 *当前系统版本上项目使用的分支* ，在这个基础上开始下面的工作。目前不允许直接推送代码到当前的使用分支上，只能通过 =merge request= 的方式合并代码。
+并且每个 =merge request= 需要保证只有一次提交，提交信息按照 [[https://github.com/conventional-changelog/conventional-changelog/blob/a5505865ff3dd710cf757f50530e73ef0ca641da/conventions/angular.md][Commit Message Format]] 填写，提交信息应该与此次修改相关并且有意义。
+
+--------
+
+下面举个例子： =startdde= 需要在 =uos= 上添加对 =wayland= 的支持
+
+1. 首选确定了 =startdde= 在 =uos= 上使用的分支是 =matser=
+2. 基于 =master= 分支创建出 =yanbowen/feat/support-wayland= 分支来进行代码修改
+
+   新建的分支必须以 =<username>/<type>/<topic>= 格式命令， 说明如下：
+
+   - =username=
+
+     用户名
+
+   - =type=
+
+     此次提交的类型，参考上面的 =Commit Message Format= 填写，如提交新功能就用 =feat= ，修复 =bug= 就用 =fix= 等
+
+   - =topic=
+
+     此次提交的主题，简短的描述此次提交的目的
+
+3. 进行代码修改
+4. 代码修改完成后做一次 =commit=
+
+   若在 =commit= 后又对代码进行了修改，这时需要继续做 =commit= ，但为了避免产生多个 =commit= 信息，此时使用 =git commit --ament= 来将此次修改附加到前一个 =commit= 中
+
+5. 进行 =rebase= 操作
+
+   =commit= 完成后先不要急着推送代码，进行 =rebase= 操作后再推送。 =rebase= 操作是确保当前的修改分支可合入到 =master= 分支，具体操作如下：
+
+   - =git checkout master=
+
+     切换到项目使用的分支，此次例子中是 =master=
+
+   - =git pull -r=
+
+     更新代码
+
+   - =git checkout yanbowen/feat/support-wayland=
+
+     切换到代码修改的分支
+
+   - =git rebase master=
+
+     执行 =rebase= 操作，若没有冲突则会成功；若冲突则会提示有冲突需要解决，当冲突解决后，执行以下操作继续 =rebase= 操作：
+
+     + =git add .=
+
+       添加解决冲突的修改
+
+     + =git rebase --continue=
+
+       继续执行 =rebase= 操作
+
+6. 推送代码到仓库
+
+   因为不允许直接提交代码到项目的使用分支，所以需要推送代码到一个新分支上，新分支保持与代码修改的分支同名，命令如下：
+
+   =git push origin yanbowen/feat/support-wayland:yanbowen/feat/support-wayland=
+
+7. 创建 =merge request=
+
+   代码推送成功后到项目的主页去创建 =merge request= 并指定代码的审查者， =merge request= 将在审查之后由审查者合并到项目的使用分支
+
+
+--------
+--------
+
+** Patch 提交规范
+
+=Patch= 提交是提交信息中不包含源码的改动，所有的修改都在 =patch= 文件中。 =patch= 文件通常在项目的 =debian/patches= 目录中，通过添加到 =debian/patches/series= 文件中来启用这个 =patch= 。
+
+目前所有需要以 =patch= 方式进行提交的项目都在 [[https://gitlab.deepin.io/debian-patch/][debian patch]] 这个项目组中，这些项目通常都是上游的项目，我们在上游的基础上进行修改，通过 =patch= 的方式应用修改的代码。
+
+在对一个项目进行修改时，需要弄清一下问题：
+
+1. 当前系统的版本
+2. 项目在上游系统上的版本
+3. 当前是安全漏洞的修改还是功能 =bug= 的修改
+
+   因为这涉及到项目分支的命名，规则如下：
+
+   + 功能 =bug= 修改
+
+     =<os version>/<project version>=
+
+   + 安全漏洞修改
+
+     =<security/<os version>/<project version>=
+
+--------
+
+下面仍是通过例子描述这个过程：
+
+如需要对 =uos= 上的 =policykit-1= 添加 =pkexec= 黑名单的功能，即黑名单内的程序不允许通过 =pkexec= 提权。这是一个功能修改，流程如下：
+
+1. 确定版本
+
+   - 系统版本
+
+     =uos= 是 =v20=
+
+   - 项目版本
+
+     =v20= 对应的上游 =debian= 版本是 =buster= ，可在 =debian buster= 中查到 =policykit-1= 的信息为 =0.105-25= ，
+     可知 =policykit-1= 的版本为 =0.105=
+
+2. 确定 =debian patch= 项目组内有无 =policykit-1= 这个项目
+
+   这会出现以下几中结果：
+
+   - 项目不存在
+
+     项目不存在是，执行一下操作创建并初始化：
+
+     1. 在 =debian patch= 创建 =policykit-1= 项目
+     2. =clone= 项目到本地
+     3. 初始化项目分支
+
+        因为这是功能修改，所以分支为 =v20/0.105= ，通过以下操作初始化：
+
+        1. 创建分支
+
+           =git checkout -b v20/0.105=
+
+        1. 获取源码
+
+           执行 =apt-get source policykit-1= 获取源码，执行之前需要保证添加了源码源并更新过源
+
+        2. 清理源码
+
+           具体操作如下：
+
+           #+BEGIN_SRC shell
+           sudo apt-get build-dep policykit-1 # 安装编译依赖
+           qulit pop -af # 清除已应用的 patches，qulit 不存在时执行 sudo apt-get install qulit 安装
+           ./debian/rule clean # 清理之前编译生成的文件，没权限时添加 sudo 在执行一次，fakeroot 不存在时执行 sudo apt-get install fakeroot 安装
+           #+END_SRC
+
+        3. 提交并推送
+
+           #+BEGIN_SRC shell
+           git add .
+           git commit -m "Init"
+           git push origin v20/0.105:v20/0.105
+           #+END_SRC
+
+    - 项目存在但分支不存在
+
+      + 安全漏洞分支也不存在
+
+        按照上面 *初始化项目分支* 的步骤初始化
+
+      + 安全漏洞分支存在
+
+        这时直接从安全分支上创建功能修改分支，如下：
+
+        1. =clone= 安全分支的代码，即 =clone= 分支 =security/v20/0.105=
+        2. 创建功能分支 =git checkout -b v20/0.105=
+        3. 推送分支 =git push origin v20/0.105:v20/0.105=
+
+    - 项目存在分支也存在
+
+      无需操作
+
+3. =clone= 分支 =v20/0.105= 到本地
+4. 生成代码修改的 =patch=
+
+   在生成 =patch= 之前需要先应用项目中之前的 =patches= ，通过 =dpkg-source -b ./= 应用。 *即代码的修改必须在项目之前 =pathces= 的基础上进行。*
+
+   =patch= 文件生成后需要结合项目的源码编译生成新的 =deb= ，然后安装测试添加的功能是否正常。
+
+   =patch= 文件的命名遵从 =deepin_<topic>= 的规则，此例中的 =patch= 文件名为： =deepin_pkexec_blacklist.patch= 。
+
+5. 添加 =patch= 文件到 =series= 文件中
+
+   =series= 文件中添加的是 =patch= 文件相对与 =series= 文件的路径，本例中添加 =deepin_pkexec_blacklist.patch= 到 =series= 文件中。
+
+6. 生成 =commit=
+
+   =commit= 提交信息格式为： =patches: add <topic>= ，本例中为： =patches: add pkexec blacklist=
+
+7. =rebase= 并提交 =merge request=
+
+   =rebase= 和 =merge request= 的操作与 *源码提交* 的操作相同
+
+--------
+
+安全漏洞修复时的流程同功能修复的流程大致相同，但也有不同，不同点如下：
+
++ 分支初始化
+
+  安全漏洞的分支名称与功能修复的名称不同，但初始化的流程相同。不存在时从功能修复分支创建或者从源码创建(功能分支也不存在时)，存在时则无需操作。
+
++ =patch= 命令规则
+
+  安全漏洞的 =patch= 文件使用 =deepin_<cve id>.patch= 的命名规则，如修复漏洞 =CVE-2019-1727= 则 =patch= 文件名为： =deepin_CVE-2019-1727.patch= 。
+
++ =commit= 信息规则
+
+  安全漏洞的 =commit= 信息遵从 =cve: <topic>= 的规则。
+
+--------
+--------
+
+** 额外知识
+
+使用这份文档的读者至少应该熟悉以下内容：
+
++ =git=
+
+  熟悉基本的操作，如分支创建、修改提交、冲突处理等，理解 =repository、remote= 等概念
+
++ =quilt=
+
+  至少看过 =quilt= 的帮助手册，按照示例使用过
+
++ 源码打包
+
+  应该掌握从源码生成 =deb= 的技能
+
++ 软件源
+
+  了解软件源，熟悉 =apt= 和 =dpkg= 等工具的使用
+
++ =debian package version= 命令规范
+
+  至少应看过 =debian= 软件版本命名规范，不然无法知晓项目的版本是什么
