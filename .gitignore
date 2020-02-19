@@ -2,3 +2,4 @@
 /data
 /deepin_cve_tracker
 /vendor
+.*.csv

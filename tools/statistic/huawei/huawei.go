@@ -134,7 +134,7 @@ func exportCSVFile() error {
 	}
 	defer fw.Close()
 
-	fields := "Package,Version,CVE,CVSS,Score,PreInstalled"
+	fields := "Package,CVE,Version,CVSS,Score,PreInstalled"
 	fields += ",DebianSource,DebianVersion,DebianRelease,DebianStatus"
 	fields += ",DeepinSource,DeepinVersion,DeepinStatus,DeepinPatch,DeepinDescription"
 	_, err = fw.WriteString(fields + "\n")
@@ -173,9 +173,20 @@ func doExportCSVFile(fw *os.File, where string) error {
 			fmt.Println("Failed to query huawei db:", where, err)
 			return err
 		}
+
 		for _, info := range infos {
+			ret := ""
+			if info.DebianStatus == "fixed" {
+				ret = "上游更新"
+			} else if info.DeepinStatus == "fixed" {
+				ret = "patch 修复"
+			}
+			if len(ret) != 0 {
+				info.DeepinStatus = ret
+			}
+
 			_, _ = fw.WriteString(fmt.Sprintf("%s,%s,%s,%s,%v,%v,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-				info.Package, info.Version, info.CVE, info.CVSS, info.Score,
+				info.Package, info.CVE, info.Version, info.CVSS, info.Score,
 				info.PreInstalled, info.DebianSource, info.DebianVersion,
 				info.DebianRelease, info.DebianStatus, info.DeepinSource,
 				info.DeepinVersion, info.DeepinStatus, info.DeepinPatch,

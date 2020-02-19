@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/deepin-cve/tracker/pkg/db"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
@@ -24,6 +25,8 @@ var (
 	fetchRelease = flag.String("release", "", "the debian release for fetching")
 	exportCSV    = flag.Bool("export", false, "export cvs file")
 	outputFile   = flag.String("o", "", "the export filename")
+	packageFile  = flag.String("pkg", "", "the updated package list file")
+	initPackage  = flag.Bool("initPkg", false, "init package list db")
 
 	hwDB  *gorm.DB = nil
 	cveDB *gorm.DB = nil
@@ -106,6 +109,21 @@ func main() {
 			return
 		}
 	}
+
+	if *initPackage {
+		if len(*packageFile) == 0 || len(*huaweiDBFile) == 0 {
+			fmt.Println("Must special the package list file and db file")
+			return
+		}
+		err := initHuaweiPackage()
+		if err != nil {
+			return
+		}
+		err = updateDeepinVersion()
+		if err != nil {
+			return
+		}
+	}
 }
 
 func connectDB() error {
@@ -116,6 +134,7 @@ func connectDB() error {
 			return err
 		}
 		hwDB.AutoMigrate(&HuaweiCVE{})
+		hwDB.AutoMigrate(&db.Package{})
 	}
 	if len(*cveDBFile) != 0 {
 		cveDB, err = gorm.Open("sqlite3", *cveDBFile)
@@ -180,6 +199,126 @@ func initHuaweiDB() error {
 		fmt.Println("Failed to create huawei rows:", err)
 	}
 	return err
+}
+
+func hwCreatePackages(list db.PackageList) error {
+	tx := hwDB.Begin()
+	for _, info := range list {
+		err := tx.Create(info).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit().Error
+}
+
+func initHuaweiPackage() error {
+	// csv format: package, architecture, version, source
+	fr, err := os.Open(*packageFile)
+	if err != nil {
+		return err
+	}
+	defer fr.Close()
+
+	// clear table rows
+	err = hwDB.Delete(&db.Package{}).Error
+	if err != nil {
+		return err
+	}
+
+	var infos db.PackageList
+	var scanner = bufio.NewScanner(fr)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
+
+		items := strings.Split(line, ",")
+		if len(items) != 4 {
+			fmt.Println("Invalid csv format:", line)
+			continue
+		}
+
+		if len(infos) == 100 {
+			err := hwCreatePackages(infos)
+			if err != nil {
+				fmt.Println("Failed to create huawei package rows:", err)
+				return err
+			}
+			infos = db.PackageList{}
+		}
+
+		info := &db.Package{
+			Package:      fmt.Sprintf("%s:%s", items[0], items[1]),
+			Architecture: items[1],
+			Version:      items[2],
+			Source:       items[2],
+		}
+		// source version
+		tmp := strings.Split(info.Source, " (")
+		if len(tmp) != 2 {
+			info.SourceVersion = info.Version
+		} else {
+			info.Source = tmp[0]
+			info.SourceVersion = tmp[1]
+		}
+
+		infos = append(infos, info)
+	}
+
+	if len(infos) == 0 {
+		return nil
+	}
+	err = hwCreatePackages(infos)
+	if err != nil {
+		fmt.Println("Failed to create huawei package rows:", err)
+	}
+	return err
+}
+
+func updateDeepinVersion() error {
+	var (
+		offset = 0
+		length = 100
+		limit  = 100
+	)
+	for length == limit {
+		var infos HuaweiCVEList
+		err := hwDB.Model(&HuaweiCVE{}).Offset(offset).Limit(limit).Find(&infos).Error
+		if err != nil {
+			return err
+		}
+
+		tx := hwDB.Begin()
+		for _, info := range infos {
+			var pkgInfo db.Package
+			err = tx.Model(&db.Package{}).Where("`package` LIKE ? OR `source` = ?",
+				fmt.Sprintf("%s:%", info.Package),
+				info.Package).First(&pkgInfo).Error
+			if err != nil {
+				continue
+			}
+			if info.DeepinVersion == pkgInfo.Version {
+				continue
+			}
+			err = tx.Model(&HuaweiCVE{}).Where("`id` = ?",
+				info.ID).Update("deepin_version", pkgInfo.Version).Error
+			if err != nil {
+				tx.Rollback()
+				fmt.Println("Failed to update deepin version:",
+					info.Package, pkgInfo.Package, pkgInfo.Version)
+				return err
+			}
+		}
+		tx.Commit()
+
+		length = len(infos)
+		offset += length
+	}
+
+	return nil
 }
 
 func fetchDebianStatus() error {
