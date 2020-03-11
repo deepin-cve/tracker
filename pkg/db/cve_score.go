@@ -6,12 +6,8 @@ import "fmt"
 type CVEScore struct {
 	ID            string `gorm:"primary_key;index" json:"id"`
 	ScoreSeverity string `json:"score_severity"`
-	Vector        string `json:"vector"`
 	CVSS          string `json:"cvss"`
-
 	Score               float64 `json:"score"`
-	ImpactScore         float64 `json:"impact_score"`
-	ExploitabilityScore float64 `json:"exploitability_score"`
 }
 
 // CVEScoreList cve score list
