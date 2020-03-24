@@ -185,7 +185,7 @@ func doExportCSVFile(fw *os.File, where string) error {
 				info.DeepinStatus = ret
 			}
 
-			_, _ = fw.WriteString(fmt.Sprintf("%s,%s,%s,%s,%v,%v,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+			_, _ = fw.WriteString(fmt.Sprintf("%s,%s,%s,%s,%v,%v,%s,%s,%s,%s,%s,%s,%s,%q,%q\n",
 				info.Package, info.CVE, info.Version, info.CVSS, info.Score,
 				info.PreInstalled, info.DebianSource, info.DebianVersion,
 				info.DebianRelease, info.DebianStatus, info.DeepinSource,
