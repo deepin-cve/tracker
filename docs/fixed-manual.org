@@ -194,9 +194,9 @@ libexif-0.6.21/  libexif_0.6.21-5.1.debian.tar.xz  libexif_0.6.21-5.1.dsc  libex
 
 + 项目为空
 
-   这时就先以 =libexif= 的版本为名创建一个分支，如： =git checkout -b 0.6.21= ，版本号不包含 =-= 及其后的字符。
+   这时就先以 =libexif= 的版本和系统版本为名创建一个分支，如： =git checkout -b v20/0.6.21= ，版本号不包含 =-= 及其后的字符。
 
-   接着添加干净的源码到 =0.6.21= 分支中，命令如下：
+   接着添加干净的源码到 =v20/0.6.21= 分支中，命令如下：
 
    #+BEGIN_SRC shell
    cd libexif-0.6.21
